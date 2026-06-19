@@ -5,7 +5,7 @@
   import { relationFor } from '../model/detail';
   import { Search, X } from '@lucide/svelte';
 
-  let { tree, layout, onpick }: { tree: Tree; layout: Layout; onpick: (id: string) => void } = $props();
+  let { tree, layout, mobile = false, onpick }: { tree: Tree; layout: Layout; mobile?: boolean; onpick: (id: string) => void } = $props();
 
   let q = $state('');
   let active = $state(0);
@@ -40,7 +40,7 @@
   }
 </script>
 
-<div class="search">
+<div class="search" class:mob={mobile} class:desk={!mobile}>
   <div class="box">
     <Search size={16} strokeWidth={2.2} color="#a08f5f" />
     <input
@@ -69,14 +69,17 @@
 </div>
 
 <style>
-  .search { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); width: clamp(220px, 58vw, 340px); z-index: 47; font-family: Manrope, sans-serif; }
+  .search { position: absolute; z-index: 47; font-family: Manrope, sans-serif; }
+  .search.desk { left: 30px; bottom: 26px; width: 300px; }
+  .search.mob { left: 14px; right: 14px; bottom: 84px; }
   .box { display: flex; align-items: center; gap: 8px; background: rgba(255,253,249,0.96); backdrop-filter: blur(8px); border: 1px solid #e7decb; border-radius: 13px; padding: 9px 12px; box-shadow: 0 6px 20px rgba(70,55,40,0.1); }
   .box:focus-within { border-color: #cdbd96; box-shadow: 0 8px 26px rgba(70,55,40,0.16); }
   input { flex: 1; border: none; outline: none; background: none; font-family: inherit; font-size: 14px; color: #352f28; min-width: 0; }
   input::placeholder { color: #a99f8f; }
   .clr { display: flex; border: none; background: none; color: #b3a995; cursor: pointer; padding: 0; }
   .clr:hover { color: #6a6358; }
-  .list { margin-top: 7px; background: #fffdf9; border: 1px solid #ece5da; border-radius: 13px; box-shadow: 0 14px 38px rgba(70,55,40,0.16); overflow: hidden; max-height: 60vh; overflow-y: auto; }
+  /* выпадение ВВЕРХ (поиск стоит внизу) */
+  .list { position: absolute; bottom: calc(100% + 7px); left: 0; right: 0; background: #fffdf9; border: 1px solid #ece5da; border-radius: 13px; box-shadow: 0 -14px 38px rgba(70,55,40,0.16); overflow: hidden; max-height: 56vh; overflow-y: auto; }
   .row { display: block; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid #f3eee5; padding: 9px 13px; cursor: pointer; font-family: inherit; }
   .row:last-child { border-bottom: none; }
   .row.active { background: #f6f1e8; }

@@ -71,7 +71,7 @@
     {/if}
 
     {#if mode === 'tree'}
-      <Search {tree} {layout} onpick={locate} />
+      <Search {tree} {layout} {mobile} onpick={locate} />
     {/if}
 
     {#if mode === 'tree' && !selected}
@@ -144,8 +144,8 @@
   .title { font-family: Spectral, serif; font-size: 26px; font-weight: 600; color: #322c24; line-height: 1.05; margin-top: 5px; }
   .sub { font-size: 12.5px; color: #7d7468; margin-top: 7px; line-height: 1.5; }
   .sub b { color: #322c24; font-weight: 600; }
-  .legend { position: absolute; left: 30px; bottom: 26px; display: flex; gap: 20px; flex-wrap: wrap; background: rgba(255,253,249,0.86); backdrop-filter: blur(8px); border: 1px solid #ece5da; border-radius: 16px; padding: 13px 16px; box-shadow: 0 8px 24px rgba(70,55,40,0.08); font-size: 11.5px; color: #6a6358; z-index: 44; }
-  .legend.mobile { left: 14px; right: 14px; bottom: 86px; }
+  .legend { position: absolute; left: 30px; bottom: 82px; display: flex; gap: 20px; flex-wrap: wrap; background: rgba(255,253,249,0.86); backdrop-filter: blur(8px); border: 1px solid #ece5da; border-radius: 16px; padding: 13px 16px; box-shadow: 0 8px 24px rgba(70,55,40,0.08); font-size: 11.5px; color: #6a6358; z-index: 44; }
+  .legend.mobile { left: 14px; right: 14px; bottom: 150px; }
   .lh { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #a59a8c; margin-bottom: 7px; }
   .lrow { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; white-space: nowrap; }
   .bar { width: 18px; height: 5px; border-radius: 3px; }
