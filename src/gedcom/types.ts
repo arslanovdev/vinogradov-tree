@@ -5,6 +5,8 @@ export interface GEvent {
   file?: string;
   titl?: string;
   form?: string;
+  lat?: number;
+  lon?: number;
 }
 
 export interface Indi {

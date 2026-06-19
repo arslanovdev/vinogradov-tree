@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { parseGedcom, validate } from '../src/gedcom/parse';
 import { buildLayout } from '../src/model/layout';
 import { relAnc, nameParts, confOf, linkifySource } from '../src/model/derive';
+import { mapPlaces } from '../src/model/places';
 
 const ged = readFileSync(fileURLToPath(new URL('../public/fedorovka_family.ged', import.meta.url)), 'utf-8');
 const tree = parseGedcom(ged);
@@ -45,5 +46,17 @@ describe('derive', () => {
   it('linkifies pamyat-naroda ids', () => {
     expect(linkifySource('person-hero122489359').url).toContain('/heroes/person-hero122489359/');
     expect(linkifySource('ЦАМО').url).toBeNull();
+  });
+});
+
+describe('map coordinates', () => {
+  it('parses MAP/LATI/LONG into events', () => {
+    expect(tree.indi['@I1@'].birt?.lat).toBeCloseTo(53.179, 2);
+    expect(tree.indi['@I1@'].birt?.lon).toBeCloseTo(55.186, 2);
+  });
+  it('builds map places from real coordinates', () => {
+    const places = mapPlaces(tree);
+    expect(places.length).toBeGreaterThan(3);
+    expect(places.every((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon) && p.people.length > 0)).toBe(true);
   });
 });

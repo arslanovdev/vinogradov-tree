@@ -1,54 +1,92 @@
-import type { Tree } from '../gedcom/types';
+import type { Tree, GEvent } from '../gedcom/types';
 
 export type PlaceKind = 'home' | 'home2' | 'origin' | 'war' | 'other';
 
-export interface PlaceNode { key: string; lat: number; lon: number; name: string; sub: string; kind: PlaceKind; }
-
-export const PLACE_NODES: PlaceNode[] = [
-  { key: 'gorodok', lat: 55.47, lon: 29.99, name: 'Городок', sub: 'Беларусь · фронт', kind: 'war' },
-  { key: 'sychevka', lat: 55.83, lon: 34.28, name: 'Сычёвка', sub: 'Смоленщина · фронт', kind: 'war' },
-  { key: 'nikolskoe', lat: 53.52, lon: 49.40, name: 'Никольское', sub: 'Самарское Заволжье · истоки рода', kind: 'origin' },
-  { key: 'kamyshly', lat: 54.05, lon: 55.70, name: 'Камышлы', sub: 'Уфимский у. · отсюда фамилия', kind: 'origin' },
-  { key: 'fedorovsky', lat: 53.13, lon: 55.33, name: 'Фёдоровский район', sub: 'родовое гнездо', kind: 'home' },
-  { key: 'sterli', lat: 53.47, lon: 55.65, name: 'Бузат · Талачёво', sub: 'Стерлибашевский / Стерлитамакский', kind: 'home2' },
-  { key: 'kandalaksha', lat: 67.15, lon: 32.41, name: 'Кандалакша', sub: 'Мурманская обл.', kind: 'other' },
-];
-
-export const PLACE_ARROWS: { from: string; to: string; kind: 'mig' | 'war' }[] = [
-  { from: 'nikolskoe', to: 'kamyshly', kind: 'mig' },
-  { from: 'kamyshly', to: 'fedorovsky', kind: 'mig' },
-  { from: 'sterli', to: 'fedorovsky', kind: 'mig' },
-  { from: 'fedorovsky', to: 'gorodok', kind: 'war' },
-  { from: 'fedorovsky', to: 'sychevka', kind: 'war' },
-];
-
-export function nodeKey(s: string | undefined): string | null {
-  if (!s) return null;
-  if (/Верхнеяушево|Ф[её]доровка|Ивановка|Покровка/i.test(s)) return 'fedorovsky';
-  if (/Бузат|Талач[её]во|Кузьминовка/i.test(s)) return 'sterli';
-  if (/Камышлы/i.test(s)) return 'kamyshly';
-  if (/Никольское/i.test(s)) return 'nikolskoe';
-  if (/Городок/i.test(s)) return 'gorodok';
-  if (/Сыч[её]в|Нетертовка/i.test(s)) return 'sychevka';
-  if (/Кандалакша/i.test(s)) return 'kandalaksha';
-  return null;
+export interface MapPlace {
+  key: string;
+  lat: number;
+  lon: number;
+  name: string;
+  kind: PlaceKind;
+  people: string[]; // ids
 }
 
 export const placeColor = (k: PlaceKind) =>
   ({ home: '#b1944c', home2: '#84a096', origin: '#b0876a', war: '#a4553f', other: '#9a9183' }[k]);
 
-/** key → массив id людей, у кого место рождения/смерти/захоронения/жительства попадает в узел. */
-export function peopleByPlace(tree: Tree): Record<string, string[]> {
-  const out: Record<string, string[]> = {};
-  PLACE_NODES.forEach((n) => (out[n.key] = []));
+function kindOf(s: string): PlaceKind {
+  if (/Городок|Сыч[её]в|Нетертовка/i.test(s)) return 'war';
+  if (/Никольское|Молчаново|Камышлы|Пенз/i.test(s)) return 'origin';
+  if (/Бузат|Талач[её]во|Кузьминовка/i.test(s)) return 'home2';
+  if (/Ф[её]доровка|Верхнеяушево|Ивановка|Покровка|Алёшкино/i.test(s)) return 'home';
+  return 'other';
+}
+
+/** Короткое имя населённого пункта из строки PLAC (берём последнее «с./д./г. Название», иначе первый сегмент). */
+export function shortPlace(s: string): string {
+  const matches = [...s.matchAll(/\b(?:с|д|г|пос|дер|село|гор)\.?\s+([A-ЯЁ][А-Яа-яё-]+)/g)];
+  if (matches.length) return matches[matches.length - 1][1];
+  return s.split(',')[0].replace(/^(с|д|г|пос|дер|село|гор)\.?\s+/i, '').trim();
+}
+
+const indiEvents = (tree: Tree, id: string): GEvent[] => {
+  const p = tree.indi[id];
+  return [p.birt, p.deat, p.buri, p.resi].filter((e): e is GEvent => !!e);
+};
+
+/** Места с координатами (агрегируем по округлённым координатам), + кто с ними связан. */
+export function mapPlaces(tree: Tree): MapPlace[] {
+  const by: Record<string, MapPlace> = {};
   for (const id of Object.keys(tree.indi)) {
-    const p = tree.indi[id];
     const seen = new Set<string>();
-    (['birt', 'deat', 'buri', 'resi'] as const).forEach((f) => {
-      const plac = p[f]?.plac;
-      const k = plac ? nodeKey(plac) : null;
-      if (k && !seen.has(k)) { seen.add(k); out[k].push(id); }
-    });
+    for (const e of indiEvents(tree, id)) {
+      if (e.lat == null || e.lon == null) continue;
+      const key = e.lat.toFixed(3) + ',' + e.lon.toFixed(3);
+      if (!by[key]) {
+        by[key] = { key, lat: e.lat, lon: e.lon, name: shortPlace(e.plac || ''), kind: kindOf(e.plac || ''), people: [] };
+      } else if ((e.plac || '').length && by[key].name.length < 3) {
+        by[key].name = shortPlace(e.plac || '');
+      }
+      if (!seen.has(key)) { seen.add(key); by[key].people.push(id); }
+    }
+  }
+  return Object.values(by).sort((a, b) => b.people.length - a.people.length);
+}
+
+/** Места (по названию), у которых НИ В ОДНОЙ записи нет координат — их не видно на карте. */
+export function placesMissingCoords(tree: Tree): { name: string; people: number }[] {
+  const withCoord = new Set<string>();
+  const without: Record<string, Set<string>> = {};
+  for (const id of Object.keys(tree.indi)) {
+    for (const e of indiEvents(tree, id)) {
+      if (!e.plac) continue;
+      const nm = shortPlace(e.plac);
+      if (e.lat != null && e.lon != null) withCoord.add(nm);
+      else (without[nm] = without[nm] || new Set()).add(id);
+    }
+  }
+  return Object.entries(without)
+    .filter(([nm]) => !withCoord.has(nm))
+    .map(([name, ids]) => ({ name, people: ids.size }))
+    .sort((a, b) => b.people - a.people);
+}
+
+/** Дуги-маршруты по ключевым словам — рисуем, только если обе точки есть в данных. */
+const ARROW_DEFS: { from: RegExp; to: RegExp; kind: 'mig' | 'war' }[] = [
+  { from: /Молчаново/i, to: /Камышлы/i, kind: 'mig' },
+  { from: /Никольское/i, to: /Камышлы/i, kind: 'mig' },
+  { from: /Камышлы/i, to: /Ф[её]доровка/i, kind: 'mig' },
+  { from: /Кузьминовка/i, to: /Ф[её]доровка/i, kind: 'mig' },
+  { from: /Ф[её]доровка/i, to: /Городок/i, kind: 'war' },
+  { from: /Ф[её]доровка/i, to: /Сыч[её]в|Нетертовка/i, kind: 'war' },
+];
+
+export function mapArrows(places: MapPlace[]): { from: MapPlace; to: MapPlace; kind: 'mig' | 'war' }[] {
+  const find = (re: RegExp) => places.find((p) => re.test(p.name));
+  const out: { from: MapPlace; to: MapPlace; kind: 'mig' | 'war' }[] = [];
+  for (const a of ARROW_DEFS) {
+    const f = find(a.from), t = find(a.to);
+    if (f && t && f.key !== t.key) out.push({ from: f, to: t, kind: a.kind });
   }
   return out;
 }

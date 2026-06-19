@@ -1,6 +1,15 @@
 import type { Tree, Indi, Fam, GEvent } from './types';
 
-/** Парсер GEDCOM 5.5.1 + наши кастомные теги (_CONF, _TODO) и OBJE/RELI/QUAY. */
+/** «N53.179910» / «E55.186229» / «-55.19» → десятичные градусы. */
+function parseCoord(v: string): number | undefined {
+  const m = v.trim().match(/([NSEW])?\s*(-?[\d.]+)/i);
+  if (!m) return undefined;
+  let n = parseFloat(m[2]);
+  if (m[1] && /[SW]/i.test(m[1])) n = -n;
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/** Парсер GEDCOM 5.5.1 + наши кастомные теги (_CONF, _TODO) и OBJE/RELI/QUAY/MAP. */
 export function parseGedcom(text: string): Tree {
   const indi: Record<string, Indi> = {};
   const fam: Record<string, Fam> = {};
@@ -78,6 +87,10 @@ export function parseGedcom(text: string): Tree {
         else if (tag === 'GIVN') p.givn = value ?? undefined;
         else if (tag === 'QUAY' && value != null) p.quay = +value;
       }
+    } else if (level >= 3 && sub) {
+      // координаты места: 3 MAP / 4 LATI N53.18 / 4 LONG E55.19
+      if (tag === 'LATI' && value) sub.lat = parseCoord(value);
+      else if (tag === 'LONG' && value) sub.lon = parseCoord(value);
     }
   }
 
