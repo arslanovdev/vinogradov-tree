@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import maplibregl from 'maplibre-gl';
+  import Supercluster from 'supercluster';
   import 'maplibre-gl/dist/maplibre-gl.css';
   import type { Tree } from '../gedcom/types';
   import type { Layout } from '../model/layout';
@@ -39,28 +40,65 @@
     map.touchZoomRotate.disableRotation();
 
     const bounds = new maplibregl.LngLatBounds();
-    for (const n of places) {
-      bounds.extend([n.lon, n.lat]);
-      const cnt = n.people.length;
-      const r = 26 + Math.min(cnt, 20) * 2.2;
-      const wrap = document.createElement('div');
-      wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;cursor:pointer';
-      const dot = document.createElement('div');
-      dot.style.cssText = `width:${r}px;height:${r}px;border-radius:50%;background:${placeColor(n.kind)};opacity:.92;border:3px solid #fffdf9;box-shadow:0 3px 10px rgba(60,48,34,.3);display:flex;align-items:center;justify-content:center;color:#fffdf9;font:800 ${cnt > 9 ? 12 : 14}px Manrope,sans-serif`;
-      dot.textContent = String(cnt);
-      const lbl = document.createElement('div');
-      lbl.style.cssText = 'margin-top:3px;font:700 11px Spectral,serif;color:#322c24;background:rgba(255,253,249,.82);padding:1px 6px;border-radius:6px;white-space:nowrap;box-shadow:0 1px 3px rgba(60,48,34,.12)';
-      lbl.textContent = n.name + (n.kind === 'war' ? ' ✝' : '');
-      wrap.append(dot, lbl);
-      wrap.addEventListener('click', () => (place = n.key));
-      new maplibregl.Marker({ element: wrap, anchor: 'center' }).setLngLat([n.lon, n.lat]).addTo(map);
-    }
+    places.forEach((n) => bounds.extend([n.lon, n.lat]));
+
+    // кластеризация: бабблы объединяются при отдалении, расходятся при зуме
+    const index = new Supercluster<{ key: string; name: string; kind: string; color: string; ppl: number }, { ppl: number }>({
+      radius: 56, maxZoom: 11,
+      map: (p) => ({ ppl: p.ppl }),
+      reduce: (acc, p) => { acc.ppl += p.ppl; },
+    });
+    index.load(places.map((n) => ({
+      type: 'Feature',
+      properties: { key: n.key, name: n.name, kind: n.kind, color: placeColor(n.kind), ppl: n.people.length },
+      geometry: { type: 'Point', coordinates: [n.lon, n.lat] },
+    })));
+
+    let markers: maplibregl.Marker[] = [];
+    const renderClusters = () => {
+      markers.forEach((m) => m.remove());
+      markers = [];
+      const b = map.getBounds();
+      const bbox: [number, number, number, number] = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+      for (const c of index.getClusters(bbox, Math.round(map.getZoom()))) {
+        const [lon, lat] = c.geometry.coordinates;
+        const pr = c.properties as Record<string, unknown>;
+        let el: HTMLElement;
+        if (pr.cluster) {
+          const n = pr.ppl as number;
+          const r = 36 + Math.min(n, 30) * 1.3;
+          el = document.createElement('div');
+          el.style.cssText = `display:flex;align-items:center;justify-content:center;width:${r}px;height:${r}px;border-radius:50%;background:rgba(177,148,76,.93);border:3px solid #fffdf9;box-shadow:0 4px 14px rgba(60,48,34,.35);color:#fffdf9;font:800 ${n > 9 ? 16 : 18}px Manrope,sans-serif;cursor:pointer`;
+          el.textContent = String(n);
+          el.addEventListener('click', () => {
+            const ez = index.getClusterExpansionZoom(pr.cluster_id as number);
+            map.easeTo({ center: [lon, lat], zoom: Math.min(ez, 12) });
+          });
+        } else {
+          const n = pr.ppl as number;
+          const r = 26 + Math.min(n, 20) * 2.2;
+          el = document.createElement('div');
+          el.style.cssText = 'display:flex;flex-direction:column;align-items:center;cursor:pointer';
+          const dot = document.createElement('div');
+          dot.style.cssText = `width:${r}px;height:${r}px;border-radius:50%;background:${pr.color};opacity:.92;border:3px solid #fffdf9;box-shadow:0 3px 10px rgba(60,48,34,.3);display:flex;align-items:center;justify-content:center;color:#fffdf9;font:800 ${n > 9 ? 12 : 14}px Manrope,sans-serif`;
+          dot.textContent = String(n);
+          const lbl = document.createElement('div');
+          lbl.style.cssText = 'margin-top:3px;font:700 11px Spectral,serif;color:#322c24;background:rgba(255,253,249,.82);padding:1px 6px;border-radius:6px;white-space:nowrap;box-shadow:0 1px 3px rgba(60,48,34,.12)';
+          lbl.textContent = (pr.name as string) + (pr.kind === 'war' ? ' ✝' : '');
+          el.append(dot, lbl);
+          el.addEventListener('click', () => (place = pr.key as string));
+        }
+        markers.push(new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([lon, lat]).addTo(map));
+      }
+    };
+
     const fit = () => { if (!places.length) return; try { map.fitBounds(bounds, { padding: { top: 150, bottom: 80, left: 70, right: 70 }, maxZoom: 7, duration: 0 }); } catch { /* */ } };
     fit();
-    setTimeout(() => { map.resize(); fit(); }, 120);
+    setTimeout(() => { map.resize(); fit(); renderClusters(); }, 120);
+    map.on('moveend', renderClusters);
 
     map.on('load', () => {
-      map.resize(); fit();
+      map.resize(); fit(); renderClusters();
       const feats = mapArrows(places).map((a) => ({
         type: 'Feature' as const, properties: { kind: a.kind },
         geometry: { type: 'LineString' as const, coordinates: [[a.from.lon, a.from.lat], [a.to.lon, a.to.lat]] },

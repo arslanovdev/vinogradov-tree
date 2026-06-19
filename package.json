@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@lucide/svelte": "^1.21.0",
-    "maplibre-gl": "^5.0.0"
+    "maplibre-gl": "^5.0.0",
+    "supercluster": "^8.0.1"
   }
 }

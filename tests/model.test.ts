@@ -60,3 +60,23 @@ describe('map coordinates', () => {
     expect(places.every((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon) && p.people.length > 0)).toBe(true);
   });
 });
+
+describe('clustering', async () => {
+  const Supercluster = (await import('supercluster')).default;
+  const places = mapPlaces(tree);
+  const build = () => {
+    const idx = new Supercluster({ radius: 56, maxZoom: 11 });
+    idx.load(places.map((n) => ({ type: 'Feature' as const, properties: { key: n.key }, geometry: { type: 'Point' as const, coordinates: [n.lon, n.lat] } })));
+    return idx;
+  };
+  it('merges nearby places when zoomed out, splits when zoomed in', () => {
+    const idx = build();
+    const world: [number, number, number, number] = [-180, -85, 180, 85];
+    const zoomedOut = idx.getClusters(world, 3);
+    const zoomedIn = idx.getClusters(world, 14);
+    // при отдалении бабблов меньше, чем мест (есть кластеры); при приближении — все по отдельности
+    expect(zoomedOut.length).toBeLessThan(places.length);
+    expect(zoomedOut.some((f) => (f.properties as { cluster?: boolean }).cluster)).toBe(true);
+    expect(zoomedIn.length).toBe(places.length);
+  });
+});
