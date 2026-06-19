@@ -6,6 +6,7 @@
   import { plural, ACCENT } from '../model/derive';
   import Tree from './Tree.svelte';
   import Detail from './Detail.svelte';
+  import Search from './Search.svelte';
   import type { Component } from 'svelte';
   import { Map as MapIcon, TreePine, LocateFixed, Plus, Minus, Maximize, Info, Star, Cross } from '@lucide/svelte';
 
@@ -39,11 +40,12 @@
   });
 
   function select(id: string) { selected = id; }
-  function goto(id: string) {
+  function goto(id: string, zoom = 0.85) {
     mode = 'tree';
     selected = id;
-    setTimeout(() => { if (!mobile) treeRef?.focus(id, 0.85, 0.42); }, 0);
+    setTimeout(() => treeRef?.focus(id, zoom, mobile ? 0.5 : 0.42), 0);
   }
+  function locate(id: string) { goto(id, 1.0); } // поиск: ближе зум
   async function toggleMap() {
     mode = mode === 'map' ? 'tree' : 'map';
     if (mode === 'map') {
@@ -66,6 +68,10 @@
 
     {#if mode === 'map' && MapView}
       <MapView {tree} {layout} {mobile} ongoto={goto} />
+    {/if}
+
+    {#if mode === 'tree'}
+      <Search {tree} {layout} onpick={locate} />
     {/if}
 
     {#if mode === 'tree' && !selected}
