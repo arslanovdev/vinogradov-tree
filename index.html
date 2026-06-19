@@ -192,10 +192,8 @@ var App = {
 
     this.staticNodes = Object.values(nodeById).map(function(n){
       var p = indi[n.id]; var side = sideById[n.id] || 'self';
-      var surn = p.surn || '', givn = p.givn || '';
-      var main = surn || givn || 'Неизвестно';
-      var sub = surn ? givn : '';
-      var mono = ((surn ? surn[0] : '') + (givn ? givn[0] : '') || (main[0] || '?')).toUpperCase();
+      var np = self.nameParts(p);
+      var main = np.main, sub = np.sub, mono = np.mono;
       var relation;
       if (n.id === '@I1@') relation = 'Это вы';
       else if (rel[n.id]) relation = self.relAnc(rel[n.id].depth, p.sex, rel[n.id].side);
@@ -240,6 +238,21 @@ var App = {
     var occu = p.occu || '', txt = (p.notes || []).join(' ');
     return /сержант|рядов|красноарм|старшина|кавалер|телефонист|стрелков|дивизи|гвард/i.test(occu) || /«За отвагу»|За боевые заслуги|Орден|подвиг|Пропал без вести|РВК|фронт|плен/i.test(txt) || !!(p.deat && p.deat.type);
   },
+  // фамилия проставлена ретроспективно / дофамильный период → на карточке показываем имя+отчество, без фамилии-плашки
+  isRetroSurn:function(p){
+    return (p.notes || []).some(function(n){ return /\[ФАМИЛИЯ\s+РЕТРО\]|дофамильн|проставлен[аоы]?\s+ретроспективн|ретроспективн[ао]\s+по\s+селу|фамилии\s+ещё\s+нет/i.test(n); });
+  },
+  // {main, sub, mono} с учётом ретро-фамилии
+  nameParts:function(p){
+    var surn = p.surn || '', givn = p.givn || '';
+    if (this.isRetroSurn(p)) {
+      var main = givn || (p.name ? p.name.replace(/\//g, '').trim() : 'Неизвестно');
+      var w = main.split(/\s+/);
+      return { main: main, sub: '', mono: ((w[0] || '?')[0] + (w[1] ? w[1][0] : '')).toUpperCase(), retroSurn: surn };
+    }
+    var m = surn || givn || 'Неизвестно';
+    return { main: m, sub: surn ? givn : '', mono: ((surn ? surn[0] : '') + (givn ? givn[0] : '') || (m[0] || '?')).toUpperCase(), retroSurn: '' };
+  },
   yr:function(d){ if (!d) return null; var m = ('' + d).match(/(\d{4})/); return m ? m[1] : null; },
   lifespan:function(p){
     var by = this.yr(p.birt && p.birt.date), dy = this.yr(p.deat && p.deat.date);
@@ -276,9 +289,8 @@ var App = {
     var PAT=this.PAT,PAT_SOFT=this.PAT_SOFT,MAT=this.MAT,MAT_SOFT=this.MAT_SOFT,SELF=this.SELF,SELF_SOFT=this.SELF_SOFT;
     var cOf = function(s){ return s === 'paternal' ? PAT : s === 'maternal' ? MAT : SELF; };
     var sOf = function(s){ return s === 'paternal' ? PAT_SOFT : s === 'maternal' ? MAT_SOFT : SELF_SOFT; };
-    var surn = p.surn || '', givn = p.givn || '';
-    var main = surn || givn || 'Неизвестно', sub = surn ? givn : '';
-    var mono = ((surn ? surn[0] : '') + (givn ? givn[0] : '') || (main[0] || '?')).toUpperCase();
+    var np = this.nameParts(p);
+    var main = np.main, sub = np.sub, mono = np.mono;
     var relation = id === '@I1@' ? 'Это вы · точка отсчёта' : this.relationFor(id, p, side);
     var sideLabel = side === 'paternal' ? 'Линия отца' : side === 'maternal' ? 'Линия матери' : 'Точка отсчёта';
     var notes = p.notes || [];
@@ -288,12 +300,13 @@ var App = {
     var sources = [];
     (p.sources || []).forEach(function(s){ s.split(/\s*;\s*/).forEach(function(t){ t = t.trim().replace(/^pamyat-naroda\.ru\s*[—-]\s*/i, ''); if (t) sources.push(t); }); });
     var facts = [];
+    if (np.retroSurn) facts.push({ label: 'Фамилия', value: '«' + np.retroSurn + '» — ретроспективная, по селу; в эту эпоху фамилий ещё не было' });
     if (p.birt && (p.birt.date || p.birt.plac)) facts.push({ label: 'Рождение', value: [this.fmtDate(p.birt.date), p.birt.plac].filter(Boolean).join('  ·  ') });
     if (p.deat && (p.deat.date || p.deat.plac || p.deat.type)) facts.push({ label: 'Смерть', value: [p.deat.type, this.fmtDate(p.deat.date), p.deat.plac].filter(Boolean).join('  ·  ') });
     if (p.buri && p.buri.plac) facts.push({ label: 'Захоронение', value: p.buri.plac });
     if (p.occu) facts.push({ label: 'Служба / занятие', value: p.occu });
     if (p.resi && p.resi.plac && (!p.birt || p.resi.plac !== p.birt.plac)) facts.push({ label: 'Место жительства', value: p.resi.plac });
-    var nm = function(rid){ var q = self.indi[rid]; return q ? (q.name || [q.surn, q.givn].filter(Boolean).join(' ') || 'Неизвестно') : rid; };
+    var nm = function(rid){ var q = self.indi[rid]; if (!q) return rid; var qp = self.nameParts(q); return [qp.main, qp.sub].filter(Boolean).join(' ') || 'Неизвестно'; };
     var chip = function(rid){ return { name: nm(rid), id: rid }; };
     var fc = p.famc ? this.fam[p.famc] : null;
     var parents = fc ? [fc.husb, fc.wife].filter(Boolean).map(chip) : [];
