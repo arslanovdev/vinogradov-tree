@@ -9,9 +9,17 @@
 
   const d = $derived(buildDetail(tree, id, layout));
   let photoOk = $state(false);
+  let zoomed = $state(false);
   $effect(() => {
     photoOk = false;
+    zoomed = false;
     if (d?.photo) { const im = new Image(); im.onload = () => (photoOk = true); im.src = d.photo; }
+  });
+  $effect(() => {
+    if (!zoomed) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') zoomed = false; };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   });
 </script>
 
@@ -23,7 +31,7 @@
 
     <div class="head">
       {#if d.photo && photoOk}
-        <div class="ava" style="background:#f0ebe2 center/cover no-repeat url('{d.photo}');box-shadow:inset 0 0 0 2px var(--soft)"></div>
+        <button class="ava avabtn" style="background:#f0ebe2 center/cover no-repeat url('{d.photo}');box-shadow:inset 0 0 0 2px var(--soft)" onclick={() => (zoomed = true)} title="Увеличить фото" aria-label="Увеличить фото"></button>
       {:else}
         <div class="ava mono">{d.mono}</div>
       {/if}
@@ -94,6 +102,16 @@
     {/each}
     <div style="height:20px"></div>
   </div>
+
+  {#if zoomed && d.photo}
+    <div class="lightbox" onclick={() => (zoomed = false)} role="button" tabindex="-1" aria-label="Закрыть фото">
+      <figure onclick={(e) => e.stopPropagation()}>
+        <img src={d.photo} alt={d.main} />
+        <figcaption>{[d.main, d.sub].filter(Boolean).join(' · ')}</figcaption>
+      </figure>
+      <button class="lclose" onclick={() => (zoomed = false)} aria-label="Закрыть"><X size={20} strokeWidth={2} /></button>
+    </div>
+  {/if}
 {/if}
 
 <style>
@@ -107,6 +125,14 @@
   .head { display: flex; gap: 16px; align-items: center; padding-right: 30px; }
   .ava { width: 64px; height: 64px; border-radius: 50%; flex: none; }
   .ava.mono { background: var(--soft); color: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 23px; }
+  .avabtn { border: none; padding: 0; cursor: zoom-in; transition: transform 0.2s ease; }
+  .avabtn:hover { transform: scale(1.05); }
+  .lightbox { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; background: rgba(28,23,18,0.82); backdrop-filter: blur(4px); animation: bin 0.25s ease both; cursor: zoom-out; padding: 24px; }
+  .lightbox figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; cursor: default; }
+  .lightbox img { max-width: min(86vw, 520px); max-height: 78vh; border-radius: 14px; box-shadow: 0 24px 70px rgba(0,0,0,0.5); }
+  .lightbox figcaption { font-family: Spectral, serif; font-size: 16px; color: #f4ece0; text-align: center; max-width: 520px; }
+  .lclose { position: absolute; top: 22px; right: 22px; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .lclose:hover { background: rgba(255,255,255,0.22); }
   .rel { font-size: 9.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
   .name { font-family: Spectral, serif; font-size: 23px; font-weight: 600; color: #2f2a22; line-height: 1.1; margin-top: 2px; }
   .givn { font-size: 14px; color: #6a6358; }
