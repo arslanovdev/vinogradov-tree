@@ -6,6 +6,7 @@
   import { plural, ACCENT } from '../model/derive';
   import Tree from './Tree.svelte';
   import Detail from './Detail.svelte';
+  import type { Component } from 'svelte';
 
   let tree = $state<TreeData | null>(null);
   let layout = $state<Layout | null>(null);
@@ -13,6 +14,8 @@
   let error = $state<string | null>(null);
   let vw = $state(typeof window !== 'undefined' ? window.innerWidth : 1200);
   let legendOpen = $state(false);
+  let mode = $state<'tree' | 'map'>('tree');
+  let MapView = $state<Component<any> | null>(null);
   let treeRef: Tree | undefined = $state();
 
   const mobile = $derived(vw <= 640);
@@ -35,7 +38,18 @@
   });
 
   function select(id: string) { selected = id; }
-  function goto(id: string) { selected = id; if (!mobile) treeRef?.focus(id, Math.max(0.8, 0.85), 0.42); }
+  function goto(id: string) {
+    mode = 'tree';
+    selected = id;
+    setTimeout(() => { if (!mobile) treeRef?.focus(id, 0.85, 0.42); }, 0);
+  }
+  async function toggleMap() {
+    mode = mode === 'map' ? 'tree' : 'map';
+    if (mode === 'map') {
+      selected = null;
+      if (!MapView) MapView = (await import('./MapView.svelte')).default as Component<any>;
+    }
+  }
 </script>
 
 <div class="root" style="--pat:{ACCENT.paternal};--mat:{ACCENT.maternal};--self:{ACCENT.self}">
@@ -49,7 +63,11 @@
   {:else}
     <Tree bind:this={treeRef} {tree} {layout} {selected} onselect={select} />
 
-    {#if !selected}
+    {#if mode === 'map' && MapView}
+      <MapView {tree} {layout} {mobile} ongoto={goto} />
+    {/if}
+
+    {#if mode === 'tree' && !selected}
       <div class="header" class:mobile>
         <div class="eyebrow">Генеалогическое древо</div>
         <div class="title">Семья Виноградовых</div>
@@ -59,7 +77,7 @@
       </div>
     {/if}
 
-    {#if !mobile || legendOpen}
+    {#if mode === 'tree' && (!mobile || legendOpen)}
       <div class="legend" class:mobile>
         <div class="lcol">
           <div class="lh">Родственные линии</div>
@@ -81,17 +99,20 @@
       </div>
     {/if}
 
-    {#if mobile && !selected}
+    {#if mode === 'tree' && mobile && !selected}
       <button class="info" onclick={() => (legendOpen = !legendOpen)}>i</button>
     {/if}
 
     <div class="controls">
-      <button class="me" onclick={() => treeRef?.findMe()}>◎ Я</button>
-      <div class="zbox">
-        <button onclick={() => treeRef?.zoom(1.2)}>+</button>
-        <button onclick={() => treeRef?.zoom(1 / 1.2)}>−</button>
-        <button onclick={() => treeRef?.fit()}>⤢</button>
-      </div>
+      <button class="mapbtn" onclick={toggleMap}>{mode === 'map' ? '🌳 Древо' : '🗺 Карта'}</button>
+      {#if mode === 'tree'}
+        <button class="me" onclick={() => treeRef?.findMe()}>◎ Я</button>
+        <div class="zbox">
+          <button onclick={() => treeRef?.zoom(1.2)}>+</button>
+          <button onclick={() => treeRef?.zoom(1 / 1.2)}>−</button>
+          <button onclick={() => treeRef?.fit()}>⤢</button>
+        </div>
+      {/if}
     </div>
 
     {#if selected}
@@ -124,6 +145,8 @@
   .controls { position: absolute; right: 26px; bottom: 26px; display: flex; flex-direction: column; gap: 9px; z-index: 46; }
   .me { border: none; border-radius: 14px; padding: 11px 16px; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 18px rgba(70,55,40,0.15); background: var(--self); color: #fffdf9; }
   .me:hover { filter: brightness(1.06); }
+  .mapbtn { border: 1px solid #ece5da; border-radius: 14px; padding: 11px 16px; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 18px rgba(70,55,40,0.1); background: rgba(255,253,249,0.95); color: #5b5347; }
+  .mapbtn:hover { background: #f6f1e8; }
   .zbox { display: flex; flex-direction: column; background: rgba(255,253,249,0.9); backdrop-filter: blur(8px); border: 1px solid #ece5da; border-radius: 14px; overflow: hidden; box-shadow: 0 6px 18px rgba(70,55,40,0.08); }
   .zbox button { background: none; border: none; border-bottom: 1px solid #efe9df; width: 46px; height: 42px; font-size: 18px; color: #5b5347; cursor: pointer; font-family: inherit; }
   .zbox button:last-child { border-bottom: none; font-size: 16px; }
