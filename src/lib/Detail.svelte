@@ -105,11 +105,11 @@
 
   {#if zoomed && d.photo}
     <div class="lightbox" onclick={() => (zoomed = false)} role="button" tabindex="-1" aria-label="Закрыть фото">
-      <figure onclick={(e) => e.stopPropagation()}>
+      <figure>
         <img src={d.photo} alt={d.main} />
         <figcaption>{[d.main, d.sub].filter(Boolean).join(' · ')}</figcaption>
       </figure>
-      <button class="lclose" onclick={() => (zoomed = false)} aria-label="Закрыть"><X size={20} strokeWidth={2} /></button>
+      <button class="lclose" onclick={() => (zoomed = false)} aria-label="Закрыть"><X size={22} strokeWidth={2} /></button>
     </div>
   {/if}
 {/if}
@@ -127,11 +127,11 @@
   .ava.mono { background: var(--soft); color: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 23px; }
   .avabtn { border: none; padding: 0; cursor: zoom-in; transition: transform 0.2s ease; }
   .avabtn:hover { transform: scale(1.05); }
-  .lightbox { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; background: rgba(28,23,18,0.82); backdrop-filter: blur(4px); animation: bin 0.25s ease both; cursor: zoom-out; padding: 24px; }
-  .lightbox figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; cursor: default; }
-  .lightbox img { max-width: min(86vw, 520px); max-height: 78vh; border-radius: 14px; box-shadow: 0 24px 70px rgba(0,0,0,0.5); }
-  .lightbox figcaption { font-family: Spectral, serif; font-size: 16px; color: #f4ece0; text-align: center; max-width: 520px; }
-  .lclose { position: absolute; top: 22px; right: 22px; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .lightbox { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; background: rgba(28,23,18,0.82); backdrop-filter: blur(4px); animation: bin 0.25s ease both; cursor: zoom-out; padding: 24px; padding-top: max(24px, env(safe-area-inset-top)); padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+  .lightbox figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; cursor: zoom-out; }
+  .lightbox img { max-width: min(92vw, 540px); max-height: 76vh; border-radius: 14px; box-shadow: 0 24px 70px rgba(0,0,0,0.5); }
+  .lightbox figcaption { font-family: Spectral, serif; font-size: 16px; color: #f4ece0; text-align: center; max-width: 92vw; }
+  .lclose { position: absolute; top: max(16px, env(safe-area-inset-top)); right: 16px; width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .lclose:hover { background: rgba(255,255,255,0.22); }
   .rel { font-size: 9.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
   .name { font-family: Spectral, serif; font-size: 23px; font-weight: 600; color: #2f2a22; line-height: 1.1; margin-top: 2px; }
