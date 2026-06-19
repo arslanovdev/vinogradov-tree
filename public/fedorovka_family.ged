@@ -207,6 +207,10 @@
 2 GIVN Закарьян Файзуллович
 1 SEX M
 1 RELI Ислам
+1 OBJE
+2 FILE photos/zakaryan.jpg
+2 FORM jpg
+2 TITL Рахматуллин Закарьян Файзуллович
 1 NOTE [ТОЧНОСТЬ B] прадед: живая память, дата рождения приблизительная
 1 BIRT
 2 DATE DEC 1927
@@ -228,6 +232,10 @@
 2 SURN Белова
 2 GIVN Татьяна Егоровна
 1 SEX F
+1 OBJE
+2 FILE photos/tatyana_belova.jpg
+2 FORM jpg
+2 TITL Белова Татьяна Егоровна
 1 NOTE [ТОЧНОСТЬ B] прабабушка: год ~1920 приблизительно
 1 BIRT
 2 DATE ABT 1920
