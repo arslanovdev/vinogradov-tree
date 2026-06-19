@@ -224,9 +224,13 @@ var App = {
     var suf = side === 'paternal' ? ' по папе' : side === 'maternal' ? ' по маме' : '';
     if (depth === 1) return sex === 'F' ? 'Мама' : 'Папа';
     if (depth === 2) return (sex === 'F' ? 'Бабушка' : 'Дедушка') + suf;
-    // depth >= 3: «пра» × (depth-3) + дед/бабушка — генерируется для любой глубины
-    var w = 'пра'.repeat(depth - 3) + (sex === 'F' ? 'прабабушка' : 'прадед');
-    return w.charAt(0).toUpperCase() + w.slice(1) + suf;
+    var c = depth - 2;                       // число «пра»
+    var base = sex === 'F' ? 'бабушка' : 'дед';
+    // до прапрапра… (3 «пра») — словом; глубже — компактно: «Пра⁶-дед»
+    if (c <= 3) { var w = 'пра'.repeat(c) + base; return w.charAt(0).toUpperCase() + w.slice(1) + suf; }
+    var sup = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+    var s = ('' + c).replace(/\d/g, function(d){ return sup.charAt(+d); });
+    return 'Пра' + s + '-' + base + suf;
   },
   confOf:function(p){
     var m = (p.notes || []).map(function(n){ return n.match(/\[ТОЧНОСТЬ\s+([ABC])\]/); }).find(Boolean);
