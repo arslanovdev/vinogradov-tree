@@ -69,7 +69,7 @@ var App = {
       else { tag = parts[1]; value = parts.slice(2).join(' ') || null; }
       if (level === 0) {
         sub = null;
-        if (tag === 'INDI') { cur = indi[xref] = { id: xref, notes: [], sources: [], fams: [], famc: null }; curType = 'I'; }
+        if (tag === 'INDI') { cur = indi[xref] = { id: xref, notes: [], sources: [], fams: [], famc: null, todo: [] }; curType = 'I'; }
         else if (tag === 'FAM') { cur = fam[xref] = { id: xref, chil: [], notes: [] }; curType = 'F'; }
         else { cur = null; curType = null; }
       } else if (level === 1) {
@@ -79,6 +79,9 @@ var App = {
             case 'NAME': cur.name = value; break;
             case 'SEX': cur.sex = value; break;
             case 'OCCU': cur.occu = value; break;
+            case 'RELI': cur.reli = value; break;
+            case '_CONF': cur.conf = value; break;
+            case '_TODO': if (value) cur.todo.push(value); break;
             case 'NOTE': cur.notes.push(value); break;
             case 'SOUR': cur.sources.push(value); break;
             case 'FAMC': cur.famc = value; break;
@@ -234,8 +237,11 @@ var App = {
     return 'Пра' + s + '-' + base + suf;
   },
   confOf:function(p){
-    var m = (p.notes || []).map(function(n){ return n.match(/\[ТОЧНОСТЬ\s+([ABC])\]/); }).find(Boolean);
-    var letter = m ? m[1] : null;
+    // приоритет: поле _CONF → QUAY (0–3) → старый [ТОЧНОСТЬ A/B/C] в заметке
+    var letter = null;
+    if (p.conf && /^[ABC]$/i.test(('' + p.conf).trim())) letter = ('' + p.conf).trim().toUpperCase();
+    else if (p.quay != null) letter = { 3: 'A', 2: 'B', 1: 'C', 0: 'C' }[+p.quay] || null;
+    else { var m = (p.notes || []).map(function(n){ return n.match(/\[ТОЧНОСТЬ\s+([ABC])\]/); }).find(Boolean); letter = m ? m[1] : null; }
     var map = { A: { shade: '#5b5347', label: 'Архивно подтверждено' }, B: { shade: '#9a9082', label: 'Вероятно · частично' }, C: { shade: '#bdb4a5', label: 'Мало данных · тупик' } };
     return { letter: letter || '?', shade: letter ? map[letter].shade : '#bdb4a5', label: letter ? map[letter].label : 'Без оценки' };
   },
@@ -302,14 +308,18 @@ var App = {
     var methodology = (notes.map(function(n){ var m = n.match(/^\s*\[ТОЧНОСТЬ\s+[ABC]\]\s*(.*)$/); return m ? m[1] : null; }).find(Boolean)) || null;
     var plain = notes.filter(function(n){ return !/^\s*\[/.test(n); });
     var archival = notes.filter(function(n){ return /^\s*\[ПН/.test(n); }).map(function(n){ var m = n.match(/^\s*\[ПН\s*([0-9.]+)?([^\]]*)\]\s*([\s\S]*)$/); return { date: (m && m[1]) || null, body: (m && m[3]) || n.replace(/^\s*\[[^\]]*\]\s*/, '') }; });
+    // «что искать дальше»: из тега _TODO и из заметок [ИСКАТЬ]/[ЛИДЫ]
+    var todo = (p.todo || []).slice();
+    notes.forEach(function(n){ var m = n.match(/^\s*\[(?:ИСКАТЬ|ЛИДЫ|TODO)\]\s*([\s\S]*)$/i); if (m && m[1].trim()) todo.push(m[1].trim()); });
     var sources = [];
-    (p.sources || []).forEach(function(s){ s.split(/\s*;\s*/).forEach(function(t){ t = t.trim().replace(/^pamyat-naroda\.ru\s*[—-]\s*/i, ''); if (t) sources.push(t); }); });
+    (p.sources || []).forEach(function(s){ s.split(/\s*;\s*/).forEach(function(t){ t = t.trim().replace(/^pamyat-naroda\.ru\s*[—-]\s*/i, ''); if (t) sources.push(self.linkifySource(t)); }); });
     var facts = [];
     if (np.retroSurn) facts.push({ label: 'Фамилия', value: '«' + np.retroSurn + '» — ретроспективная, по селу; в эту эпоху фамилий ещё не было' });
     if (p.birt && (p.birt.date || p.birt.plac)) facts.push({ label: 'Рождение', value: [this.fmtDate(p.birt.date), p.birt.plac].filter(Boolean).join('  ·  ') });
     if (p.deat && (p.deat.date || p.deat.plac || p.deat.type)) facts.push({ label: 'Смерть', value: [p.deat.type, this.fmtDate(p.deat.date), p.deat.plac].filter(Boolean).join('  ·  ') });
     if (p.buri && p.buri.plac) facts.push({ label: 'Захоронение', value: p.buri.plac });
     if (p.occu) facts.push({ label: 'Служба / занятие', value: p.occu });
+    if (p.reli) facts.push({ label: 'Вероисповедание', value: p.reli });
     if (p.resi && p.resi.plac && (!p.birt || p.resi.plac !== p.birt.plac)) facts.push({ label: 'Место жительства', value: p.resi.plac });
     var nm = function(rid){ var q = self.indi[rid]; if (!q) return rid; var qp = self.nameParts(q); return [qp.main, qp.sub].filter(Boolean).join(' ') || 'Неизвестно'; };
     var chip = function(rid){ return { name: nm(rid), id: rid }; };
@@ -319,7 +329,14 @@ var App = {
     var spouses = [], children = [];
     (p.fams || []).forEach(function(fid){ var f = self.fam[fid]; if (!f) return; [f.husb, f.wife].forEach(function(x){ if (x && x !== id) spouses.push(chip(x)); }); (f.chil || []).forEach(function(c){ children.push(chip(c)); }); });
     var groups = [['Родители', parents], ['Супруг(а)', spouses], ['Дети', children], ['Братья и сёстры', siblings]].filter(function(g){ return g[1].length; }).map(function(g){ return { title: g[0], items: g[1] }; });
-    return { accent: cOf(side), soft: sOf(side), main: main, sub: sub, mono: mono, relation: relation, sideLabel: sideLabel, lifespan: this.lifespan(p), conf: this.confOf(p), methodology: methodology, notes: plain, archival: archival, hasArchival: archival.length > 0, sources: sources, hasSources: sources.length > 0, facts: facts, groups: groups };
+    return { accent: cOf(side), soft: sOf(side), main: main, sub: sub, mono: mono, relation: relation, sideLabel: sideLabel, lifespan: this.lifespan(p), conf: this.confOf(p), methodology: methodology, notes: plain, archival: archival, hasArchival: archival.length > 0, sources: sources, hasSources: sources.length > 0, todo: todo, hasTodo: todo.length > 0, facts: facts, groups: groups };
+  },
+
+  // ссылки на «Память народа» по ID в строке источника + распознаём архив
+  linkifySource:function(t){
+    // распознаём слаги документов «Памяти народа» → прямая ссылка на /heroes/<слаг>/
+    var m = t.match(/((?:person-hero|podvig-chelovek_nagrazhdenie|dopolnitelnoe_donesenie|nagrazhdenie)\d{5,})/);
+    return { text: t, url: m ? ('https://pamyat-naroda.ru/heroes/' + m[1] + '/') : null };
   },
 
   // ---------- DOM helpers ----------
@@ -587,13 +604,31 @@ var App = {
       drawer.appendChild(asec);
     }
 
+    if (d.hasTodo){
+      var tsec = this.el('div', 'margin-top:16px;background:#f4f7f3;border:1px solid #dfe9df;border-radius:13px;padding:13px 15px');
+      tsec.appendChild(this.el('div', 'font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#7e9483;margin-bottom:8px', { text: '↗ Что искать дальше' }));
+      d.todo.forEach(function(t){
+        var row = self.el('div', 'display:flex;gap:9px;align-items:flex-start;padding:5px 0');
+        row.appendChild(self.el('span', 'color:#84a096;font-size:13px;line-height:1.4;flex:none', { text: '□' }));
+        row.appendChild(self.el('span', 'font-size:12.5px;color:#46514a;line-height:1.55', { text: t }));
+        tsec.appendChild(row);
+      });
+      drawer.appendChild(tsec);
+    }
+
     if (d.hasSources){
       var ssec = this.el('div', 'margin-top:16px');
       ssec.appendChild(this.el('div', 'font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#a59a8c;margin-bottom:8px', { text: 'Источники' }));
       d.sources.forEach(function(s){
         var row = self.el('div', 'display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid #f1ece3');
         row.appendChild(self.el('span', 'color:var(--accent);font-size:13px;line-height:1.4;flex:none', { text: '⌖' }));
-        row.appendChild(self.el('span', 'font-size:12px;color:#6a6358;line-height:1.5;word-break:break-word', { text: s }));
+        if (s.url) {
+          var a = self.el('a', 'font-size:12px;color:var(--accent);line-height:1.5;word-break:break-word;text-decoration:underline;text-underline-offset:2px', { text: s.text });
+          a.href = s.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+          row.appendChild(a);
+        } else {
+          row.appendChild(self.el('span', 'font-size:12px;color:#6a6358;line-height:1.5;word-break:break-word', { text: s.text }));
+        }
         ssec.appendChild(row);
       });
       drawer.appendChild(ssec);
