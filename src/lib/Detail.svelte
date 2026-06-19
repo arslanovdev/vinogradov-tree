@@ -9,15 +9,27 @@
 
   const d = $derived(buildDetail(tree, id, layout));
   let photoOk = $state(false);
-  let zoomed = $state(false);
+  let lightbox = $state<{ src: string; caption: string } | null>(null);
+  let docLoaded = $state<Record<string, boolean>>({});
+
   $effect(() => {
     photoOk = false;
-    zoomed = false;
+    lightbox = null;
     if (d?.photo) { const im = new Image(); im.onload = () => (photoOk = true); im.src = d.photo; }
   });
+  // проверяем, какие сканы документов реально доступны (файл загружается)
   $effect(() => {
-    if (!zoomed) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') zoomed = false; };
+    for (const doc of d?.documents ?? []) {
+      if (docLoaded[doc.file] !== undefined) continue;
+      docLoaded[doc.file] = false;
+      const im = new Image();
+      im.onload = () => (docLoaded[doc.file] = true);
+      im.src = doc.file;
+    }
+  });
+  $effect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') lightbox = null; };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   });
@@ -31,7 +43,7 @@
 
     <div class="head">
       {#if d.photo && photoOk}
-        <button class="ava avabtn" style="background:#f0ebe2 center/cover no-repeat url('{d.photo}');box-shadow:inset 0 0 0 2px var(--soft)" onclick={() => (zoomed = true)} title="Увеличить фото" aria-label="Увеличить фото"></button>
+        <button class="ava avabtn" style="background:#f0ebe2 center/cover no-repeat url('{d.photo}');box-shadow:inset 0 0 0 2px var(--soft)" onclick={() => (lightbox = { src: d.photo!, caption: [d.main, d.sub].filter(Boolean).join(' · ') })} title="Увеличить фото" aria-label="Увеличить фото"></button>
       {:else}
         <div class="ava mono">{d.mono}</div>
       {/if}
@@ -80,6 +92,27 @@
       </div>
     {/if}
 
+    {#if d.documents.length}
+      <div class="sec">
+        <div class="sech">Документы</div>
+        <div class="docgrid">
+          {#each d.documents as doc}
+            {#if docLoaded[doc.file]}
+              <button class="doctile" onclick={() => (lightbox = { src: doc.file, caption: doc.title })} title={doc.title}>
+                <img src={doc.file} alt={doc.title} loading="lazy" />
+                <span class="doccap">{doc.title}</span>
+              </button>
+            {:else}
+              <div class="doctile pending" title="{doc.title} — скан ещё не прикреплён">
+                <div class="docph"><FileText size={22} strokeWidth={1.6} /></div>
+                <span class="doccap">{doc.title}</span>
+              </div>
+            {/if}
+          {/each}
+        </div>
+      </div>
+    {/if}
+
     {#if d.sources.length}
       <div class="sec">
         <div class="sech">Источники</div>
@@ -103,13 +136,13 @@
     <div style="height:20px"></div>
   </div>
 
-  {#if zoomed && d.photo}
-    <div class="lightbox" onclick={() => (zoomed = false)} role="button" tabindex="-1" aria-label="Закрыть фото">
+  {#if lightbox}
+    <div class="lightbox" onclick={() => (lightbox = null)} role="button" tabindex="-1" aria-label="Закрыть">
       <figure>
-        <img src={d.photo} alt={d.main} />
-        <figcaption>{[d.main, d.sub].filter(Boolean).join(' · ')}</figcaption>
+        <img src={lightbox.src} alt={lightbox.caption} />
+        <figcaption>{lightbox.caption}</figcaption>
       </figure>
-      <button class="lclose" onclick={() => (zoomed = false)} aria-label="Закрыть"><X size={22} strokeWidth={2} /></button>
+      <button class="lclose" onclick={() => (lightbox = null)} aria-label="Закрыть"><X size={22} strokeWidth={2} /></button>
     </div>
   {/if}
 {/if}
@@ -127,6 +160,14 @@
   .ava.mono { background: var(--soft); color: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 23px; }
   .avabtn { border: none; padding: 0; cursor: zoom-in; transition: transform 0.2s ease; }
   .avabtn:hover { transform: scale(1.05); }
+  .docgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 9px; }
+  .doctile { display: flex; flex-direction: column; gap: 5px; padding: 0; background: none; border: none; font-family: inherit; cursor: pointer; text-align: center; }
+  .doctile.pending { cursor: default; }
+  .doctile img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; border: 1px solid #ece5da; box-shadow: 0 3px 10px rgba(70,55,40,0.1); transition: transform 0.2s ease; }
+  .doctile:not(.pending):hover img { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(70,55,40,0.18); }
+  .docph { width: 100%; aspect-ratio: 1; border-radius: 10px; border: 1px dashed #d8cdba; background: #faf6ee; display: flex; align-items: center; justify-content: center; color: #bdae8e; }
+  .doccap { font-size: 10px; line-height: 1.25; color: #8d8478; }
+  .doctile.pending .doccap { color: #b3a995; }
   .lightbox { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; background: rgba(28,23,18,0.82); backdrop-filter: blur(4px); animation: bin 0.25s ease both; cursor: zoom-out; padding: 24px; padding-top: max(24px, env(safe-area-inset-top)); padding-bottom: max(24px, env(safe-area-inset-bottom)); }
   .lightbox figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; cursor: zoom-out; }
   .lightbox img { max-width: min(92vw, 540px); max-height: 76vh; border-radius: 14px; box-shadow: 0 24px 70px rgba(0,0,0,0.5); }

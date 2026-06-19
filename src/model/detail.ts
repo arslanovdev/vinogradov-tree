@@ -7,6 +7,7 @@ export interface Fact { label: string; value: string; }
 export interface Archival { date: string | null; body: string; }
 export interface SourceRef { text: string; url: string | null; }
 export interface Group { title: string; items: Chip[]; }
+export interface DocRef { file: string; title: string; }
 
 export interface Detail {
   id: string;
@@ -22,6 +23,16 @@ export interface Detail {
   todo: string[];
   facts: Fact[];
   groups: Group[];
+  documents: DocRef[];
+}
+
+function docLabel(file: string, titl?: string): string {
+  if (titl) return titl;
+  if (/nagradnoy|nagrazhdenie/i.test(file)) return 'Наградной лист';
+  if (/kartoteka_plena|plena/i.test(file)) return 'Карточка военнопленного';
+  if (/kartoteka/i.test(file)) return 'Учётная картотека';
+  if (/donesenie/i.test(file)) return 'Донесение о потерях';
+  return 'Документ';
 }
 
 export function relationFor(tree: Tree, id: string, layout: Layout): string {
@@ -92,5 +103,6 @@ export function buildDetail(tree: Tree, id: string, layout: Layout): Detail | nu
     lifespan: lifespan(p),
     conf: confOf(p),
     methodology, notes: plain, archival, sources, todo, facts, groups,
+    documents: p.documents.filter((m) => m.file).map((m) => ({ file: m.file!, title: docLabel(m.file!, m.titl) })),
   };
 }
