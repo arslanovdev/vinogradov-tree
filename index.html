@@ -184,6 +184,7 @@ var App = {
     this.WW = maxGen * COL + CW + PAD * 2;
     this.WH = (maxS - minS) * ROWGAP + CH + PAD * 2;
     this.generations = maxGen + 1;
+    this.maxGen = maxGen; this.COL = COL; this.PAD = PAD;
     this.nodeById = nodeById;
 
     var PAT=this.PAT,PAT_SOFT=this.PAT_SOFT,MAT=this.MAT,MAT_SOFT=this.MAT_SOFT,SELF=this.SELF,SELF_SOFT=this.SELF_SOFT;
@@ -329,6 +330,11 @@ var App = {
     return e;
   },
 
+  roman:function(n){
+    var map = [[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']], out = '';
+    for (var i = 0; i < map.length; i++) while (n >= map[i][0]) { out += map[i][1]; n -= map[i][0]; }
+    return out;
+  },
   plural:function(n, forms){ var n10 = n % 10, n100 = n % 100; if (n10 === 1 && n100 !== 11) return forms[0]; if (n10 >= 2 && n10 <= 4 && (n100 < 12 || n100 > 14)) return forms[1]; return forms[2]; },
   _mobile:function(){ return typeof window !== 'undefined' && window.innerWidth <= 640; },
   _rect:function(){ return this.vp.getBoundingClientRect(); },
@@ -347,6 +353,14 @@ var App = {
     var vp = this.el('div', 'position:absolute;inset:0;cursor:grab;touch-action:none');
     var world = this.el('div', 'position:absolute;left:0;top:0;transform-origin:0 0;width:' + this.WW + 'px;height:' + this.WH + 'px;will-change:transform');
     this.vp = vp; this.world = world;
+
+    // полосы-колонки по поколениям (мягкий ориентир, не перегружает)
+    var COLw = this.COL, PADx = this.PAD, half = (COLw - this.CW) / 2;
+    for (var g = 0; g <= this.maxGen; g++) {
+      var bx = g * COLw + PADx - half;
+      var band = this.el('div', 'position:absolute;top:0;left:' + bx + 'px;width:' + COLw + 'px;height:' + this.WH + 'px;pointer-events:none;border-right:1px solid rgba(120,96,58,.06)' + (g % 2 ? ';background:rgba(120,96,58,.035)' : ''));
+      world.appendChild(band);
+    }
 
     var svgNS = 'http://www.w3.org/2000/svg';
     var svg = document.createElementNS(svgNS, 'svg');
@@ -426,11 +440,36 @@ var App = {
     controls.appendChild(zbox);
     root.appendChild(controls);
 
+    // липкая линейка поколений сверху — следует за колонками при панораме/зуме
+    var ruler = this.el('div', 'position:absolute;top:0;left:0;right:0;height:0;pointer-events:none;z-index:15');
+    root.appendChild(ruler);
+    this.genLabels = [];
+    for (var gi = 0; gi <= this.maxGen; gi++) {
+      var L = this.el('div', 'position:absolute;top:13px;transform:translateX(-50%);font:800 11px/1 Manrope,sans-serif;letter-spacing:.14em;color:#bfae8a;white-space:nowrap;transition:opacity .25s');
+      L.innerHTML = this.roman(gi + 1) + (gi === 0 ? '<span style="font:700 8px/1 Manrope,sans-serif;letter-spacing:.12em;color:#cabd9f">&nbsp;ПОКОЛЕНИЕ</span>' : '');
+      ruler.appendChild(L);
+      this.genLabels.push({ el: L, gx: gi * COLw + PADx + this.CW / 2 });
+    }
+
     // drawer container
     this.drawerWrap = this.el('div', ''); root.appendChild(this.drawerWrap);
 
     this.layoutChrome();
+    this.updateRuler();
     this.bindEvents();
+  },
+
+  updateRuler:function(){
+    if (!this.genLabels || !this.vp) return;
+    var w = this.vp.clientWidth || window.innerWidth;
+    var headerW = this._mobile() ? w * 0.6 : 360;   // не залезать под заголовок (верх-слева)
+    for (var i = 0; i < this.genLabels.length; i++) {
+      var o = this.genLabels[i], sx = o.gx * this.view.s + this.view.x;
+      if (sx < 30 || sx > w - 14) { o.el.style.display = 'none'; continue; }
+      o.el.style.display = '';
+      o.el.style.left = sx + 'px';
+      o.el.style.opacity = (sx < headerW) ? '0' : '0.92';
+    }
   },
 
   layoutChrome:function(){
@@ -587,8 +626,8 @@ var App = {
     window.addEventListener('resize', function(){ self.onResize(); });
     window.addEventListener('orientationchange', function(){ self.onResize(); });
   },
-  onResize:function(){ var self=this; if (this._raf) return; this._raf = requestAnimationFrame(function(){ self._raf = null; self.layoutChrome(); self.renderDrawer(); }); },
-  apply:function(anim){ if (!this.world) return; this.world.style.transition = anim ? 'transform .5s cubic-bezier(.2,.7,.2,1)' : 'none'; this.world.style.transform = 'translate(' + this.view.x + 'px,' + this.view.y + 'px) scale(' + this.view.s + ')'; },
+  onResize:function(){ var self=this; if (this._raf) return; this._raf = requestAnimationFrame(function(){ self._raf = null; self.layoutChrome(); self.updateRuler(); self.renderDrawer(); }); },
+  apply:function(anim){ if (!this.world) return; this.world.style.transition = anim ? 'transform .5s cubic-bezier(.2,.7,.2,1)' : 'none'; this.world.style.transform = 'translate(' + this.view.x + 'px,' + this.view.y + 'px) scale(' + this.view.s + ')'; this.updateRuler(); },
   onWheel:function(e){
     e.preventDefault();
     var r = this._rect(), mx = e.clientX - r.left, my = e.clientY - r.top, old = this.view.s;
@@ -649,6 +688,7 @@ var App = {
       var go = function(){
         if (!self.vp || !self.vp.clientWidth) { requestAnimationFrame(go); return; }
         if (self._mobile()) self.focus('@I1@', 0.72, 0.5); else self.focus('@I1@', 0.92, 0.18);
+        self.updateRuler();
         if (!self.drawn){ self.drawn = true; self.linkEls.forEach(function(p){ p.style.strokeDashoffset = 0; }); }
       };
       setTimeout(function(){ requestAnimationFrame(go); }, 60);
