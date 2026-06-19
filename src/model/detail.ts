@@ -58,7 +58,9 @@ export function buildDetail(tree: Tree, id: string, layout: Layout): Detail | nu
   const np = nameParts(p);
   const notes = p.notes;
   const methodology = notes.map((n) => { const m = n.match(/^\s*\[ТОЧНОСТЬ\s+[ABC]\]\s*(.*)$/); return m ? m[1] : null; }).find(Boolean) || null;
-  const plain = notes.filter((n) => !/^\s*\[/.test(n));
+  // показываем все заметки, кроме служебных (достоверность/ПН/лиды/ретро-фамилия) — остальные теги ([СЕМЬЯ], [FAMILIO], [ДОРОГА ПАМЯТИ]…) видимы
+  const SERVICE = /^\s*\[(?:ТОЧНОСТЬ|ПН|ИСКАТЬ|ЛИДЫ|TODO|ФАМИЛИЯ)/i;
+  const plain = notes.filter((n) => !SERVICE.test(n));
   const archival: Archival[] = notes.filter((n) => /^\s*\[ПН/.test(n)).map((n) => {
     const m = n.match(/^\s*\[ПН\s*([0-9.]+)?([^\]]*)\]\s*([\s\S]*)$/);
     return { date: (m && m[1]) || null, body: (m && m[3]) || n.replace(/^\s*\[[^\]]*\]\s*/, '') };
