@@ -1,0 +1,26 @@
+{
+  "name": "vinogradov-tree",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "description": "Интерактивное генеалогическое древо семьи Виноградовых",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "check": "svelte-check --tsconfig ./tsconfig.json"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "@tsconfig/svelte": "^5.0.4",
+    "svelte": "^5.19.0",
+    "svelte-check": "^4.1.4",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7",
+    "vitest": "^3.0.2"
+  },
+  "dependencies": {
+    "maplibre-gl": "^5.0.0"
+  }
+}
