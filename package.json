@@ -21,6 +21,7 @@
     "vitest": "^3.0.2"
   },
   "dependencies": {
+    "@lucide/svelte": "^1.21.0",
     "maplibre-gl": "^5.0.0"
   }
 }

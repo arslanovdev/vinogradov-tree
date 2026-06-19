@@ -7,6 +7,7 @@
   import { PLACE_NODES, PLACE_ARROWS, placeColor, peopleByPlace } from '../model/places';
   import { nameParts } from '../model/derive';
   import { relationFor } from '../model/detail';
+  import { X } from '@lucide/svelte';
 
   let { tree, layout, mobile = false, ongoto }:
     { tree: Tree; layout: Layout; mobile?: boolean; ongoto: (id: string) => void } = $props();
@@ -82,7 +83,7 @@
 
 {#if place && placeNode}
   <div class="panel" class:mobile>
-    <button class="close" onclick={() => (place = null)} aria-label="Закрыть">✕</button>
+    <button class="close" onclick={() => (place = null)} aria-label="Закрыть"><X size={16} strokeWidth={2} /></button>
     <div class="pname">{placeNode.name}</div>
     <div class="psub">{placeNode.sub} · {placeList.length} чел.</div>
     {#each placeList as r}
@@ -101,7 +102,7 @@
   .cap { font-size: 12px; color: #7d7468; margin-top: 6px; line-height: 1.5; background: rgba(255,253,249,0.7); border-radius: 8px; padding: 4px 8px; }
   .panel { position: absolute; top: 0; right: 0; height: 100%; width: 360px; max-width: 92vw; background: #fffdf9; border-left: 1px solid #ece5da; box-shadow: -20px 0 50px rgba(60,48,34,0.14); padding: 24px; overflow-y: auto; z-index: 32; font-family: Manrope, sans-serif; animation: din 0.4s cubic-bezier(0.2,0.7,0.2,1) both; }
   .panel.mobile { top: auto; bottom: 0; left: 0; right: 0; width: 100%; height: 62%; border-left: none; border-top: 1px solid #ece5da; border-radius: 22px 22px 0 0; }
-  .close { position: absolute; right: 16px; top: 16px; width: 32px; height: 32px; border-radius: 50%; border: 1px solid #ece5da; background: #fff; font-size: 16px; color: #8d8478; cursor: pointer; }
+  .close { position: absolute; right: 16px; top: 16px; width: 32px; height: 32px; border-radius: 50%; border: 1px solid #ece5da; background: #fff; color: #8d8478; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .pname { font-family: Spectral, serif; font-size: 21px; font-weight: 600; color: #2f2a22; padding-right: 30px; }
   .psub { font-size: 12.5px; color: #8d8478; margin-bottom: 14px; }
   .prow { display: flex; width: 100%; text-align: left; gap: 10px; align-items: center; background: none; border: none; border-bottom: 1px solid #f1ece3; padding: 9px 2px; cursor: pointer; font-family: inherit; }

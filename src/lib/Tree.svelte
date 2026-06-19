@@ -2,6 +2,7 @@
   import type { Tree } from '../gedcom/types';
   import type { Layout } from '../model/layout';
   import { relAnc, nameParts, confOf, isMil, lifespan, colorOf, softOf, roman, ACCENT } from '../model/derive';
+  import { Star, Cross } from '@lucide/svelte';
 
   let { tree, layout, selected = null, onselect }:
     { tree: Tree; layout: Layout; selected?: string | null; onselect: (id: string) => void } = $props();
@@ -188,8 +189,8 @@
             <div class="meta">
               <span class="years">{c.lifespan}</span>
               <span class="conf">{c.conf}</span>
-              {#if c.mil}<span class="mil">✦</span>{/if}
-              {#if c.deceased}<span class="dead">✝</span>{/if}
+              {#if c.mil}<Star size={11} strokeWidth={2.2} color="var(--accent)" />{/if}
+              {#if c.deceased}<Cross size={11} strokeWidth={2.2} color="#a59a8c" />{/if}
             </div>
           </div>
         </button>

@@ -2,6 +2,7 @@
   import type { Tree } from '../gedcom/types';
   import type { Layout } from '../model/layout';
   import { buildDetail } from '../model/detail';
+  import { X, Search, Square, FileText, Landmark } from '@lucide/svelte';
 
   let { tree, layout, id, mobile = false, onclose, ongoto }:
     { tree: Tree; layout: Layout; id: string; mobile?: boolean; onclose: () => void; ongoto: (id: string) => void } = $props();
@@ -18,7 +19,7 @@
   <div class="backdrop" onclick={onclose} role="button" tabindex="-1" aria-label="Закрыть"></div>
   <div class="drawer" class:mobile style="--accent:{d.accent};--soft:{d.soft};--conf:{d.conf.shade}">
     {#if mobile}<div class="grab" onclick={onclose} role="button" tabindex="-1"><span></span></div>{/if}
-    <button class="close" onclick={onclose} aria-label="Закрыть">✕</button>
+    <button class="close" onclick={onclose} aria-label="Закрыть"><X size={17} strokeWidth={2} /></button>
 
     <div class="head">
       {#if d.photo && photoOk}
@@ -54,8 +55,8 @@
 
     {#if d.todo.length}
       <div class="box todo">
-        <div class="boxh green">↗ Что искать дальше</div>
-        {#each d.todo as t}<div class="todorow"><span>□</span><span>{t}</span></div>{/each}
+        <div class="boxh green ic"><Search size={12} strokeWidth={2.4} />Что искать дальше</div>
+        {#each d.todo as t}<div class="todorow"><Square size={13} strokeWidth={2} color="#84a096" /><span>{t}</span></div>{/each}
       </div>
     {/if}
 
@@ -64,7 +65,7 @@
         <div class="sech">Архивные заметки</div>
         {#each d.archival as a}
           <div class="acard">
-            <div class="atag"><span class="pn">◆ Память народа</span>{#if a.date}<span class="adate">{a.date}</span>{/if}</div>
+            <div class="atag"><span class="pn"><Landmark size={11} strokeWidth={2} />Память народа</span>{#if a.date}<span class="adate">{a.date}</span>{/if}</div>
             <div class="abody">{a.body}</div>
           </div>
         {/each}
@@ -76,7 +77,7 @@
         <div class="sech">Источники</div>
         {#each d.sources as s}
           <div class="srow">
-            <span class="sx">⌖</span>
+            <span class="sx"><FileText size={13} strokeWidth={2} /></span>
             {#if s.url}<a href={s.url} target="_blank" rel="noopener noreferrer">{s.text}</a>{:else}<span class="stext">{s.text}</span>{/if}
           </div>
         {/each}
@@ -124,6 +125,9 @@
   .todo { background: #f4f7f3; border: 1px solid #dfe9df; }
   .boxh { font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #a59a8c; margin-bottom: 5px; }
   .boxh.green { color: #7e9483; margin-bottom: 8px; }
+  .boxh.ic { display: inline-flex; align-items: center; gap: 6px; }
+  .todorow :global(svg) { flex: none; margin-top: 1px; }
+  .close { display: flex; align-items: center; justify-content: center; }
   .boxb { font-size: 12.5px; color: #5b5347; line-height: 1.55; }
   .todorow { display: flex; gap: 9px; align-items: flex-start; padding: 5px 0; font-size: 12.5px; color: #46514a; line-height: 1.55; }
   .todorow span:first-child { color: #84a096; }
