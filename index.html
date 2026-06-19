@@ -90,7 +90,7 @@ var App = {
             case 'DEAT': cur.deat = {}; sub = cur.deat; break;
             case 'BURI': cur.buri = {}; sub = cur.buri; break;
             case 'RESI': cur.resi = {}; sub = cur.resi; break;
-            case 'OBJE': cur.obje = {}; sub = cur.obje; break;
+            case 'OBJE': cur.objes = cur.objes || []; var _o = {}; cur.objes.push(_o); cur.obje = _o; sub = _o; break;
           }
         } else if (curType === 'F') {
           if (tag === 'HUSB') cur.husb = value;
@@ -106,13 +106,18 @@ var App = {
           else if (tag === 'FILE') sub.file = value;
           else if (tag === 'TITL') sub.titl = value;
           else if (tag === 'FORM') sub.form = value;
+          else if (tag === '_KIND') sub.kind = value;
         } else if (curType === 'I') {
           if (tag === 'SURN') cur.surn = value;
           else if (tag === 'GIVN') cur.givn = value;
         }
       }
     }
-    Object.keys(indi).forEach(function(k){ var p = indi[k]; if (p.obje && p.obje.file) p.photo = p.obje.file; });
+    Object.keys(indi).forEach(function(k){ var p = indi[k]; var os = p.objes || [];
+      var portrait = null; for (var oi=0; oi<os.length; oi++){ if (os[oi].file && os[oi].kind !== 'doc'){ portrait = os[oi]; break; } }
+      if (portrait) p.photo = portrait.file;
+      p.docs = os.filter(function(o){ return o.file && o.kind === 'doc'; });
+    });
     this.indi = indi; this.fam = fam;
   },
 
@@ -334,7 +339,7 @@ var App = {
     var spouses = [], children = [];
     (p.fams || []).forEach(function(fid){ var f = self.fam[fid]; if (!f) return; [f.husb, f.wife].forEach(function(x){ if (x && x !== id) spouses.push(chip(x)); }); (f.chil || []).forEach(function(c){ children.push(chip(c)); }); });
     var groups = [['Родители', parents], ['Супруг(а)', spouses], ['Дети', children], ['Братья и сёстры', siblings]].filter(function(g){ return g[1].length; }).map(function(g){ return { title: g[0], items: g[1] }; });
-    return { accent: cOf(side), soft: sOf(side), main: main, sub: sub, mono: mono, photo: p.photo || null, relation: relation, sideLabel: sideLabel, lifespan: this.lifespan(p), conf: this.confOf(p), methodology: methodology, notes: plain, archival: archival, hasArchival: archival.length > 0, sources: sources, hasSources: sources.length > 0, todo: todo, hasTodo: todo.length > 0, facts: facts, groups: groups };
+    return { accent: cOf(side), soft: sOf(side), main: main, sub: sub, mono: mono, photo: p.photo || null, relation: relation, sideLabel: sideLabel, lifespan: this.lifespan(p), conf: this.confOf(p), methodology: methodology, notes: plain, archival: archival, hasArchival: archival.length > 0, sources: sources, hasSources: sources.length > 0, todo: todo, hasTodo: todo.length > 0, facts: facts, groups: groups, docs: (p.docs || []) };
   },
 
   // ссылки на «Память народа» по ID в строке источника + распознаём архив
@@ -357,6 +362,17 @@ var App = {
     if (style) e.setAttribute('style', style);
     if (props) for (var k in props){ if (k === 'text') e.textContent = props[k]; else if (k === 'html') e.innerHTML = props[k]; else e.setAttribute(k, props[k]); }
     return e;
+  },
+  // аватар: инициалы по умолчанию; если фото есть и загрузилось — подменяем (иначе остаются инициалы)
+  avatarEl:function(photo, mono, size, fz){
+    var base = 'width:' + size + 'px;height:' + size + 'px;border-radius:50%;flex:none;';
+    var el = this.el('div', base + 'background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:' + fz + 'px', { text: mono });
+    if (photo){
+      var img = new Image();
+      img.onload = function(){ el.textContent = ''; el.setAttribute('style', base + 'background:#f0ebe2 center/cover no-repeat url("' + photo + '");box-shadow:inset 0 0 0 2px var(--accent-soft)'); };
+      img.src = photo;
+    }
+    return el;
   },
 
   roman:function(n){
@@ -420,9 +436,7 @@ var App = {
       wrap.style.setProperty('--conf', n.confShade);
       wrap.style.setProperty('--delay', n.delay);
       var card = self.el('div', null); card.className = 'node-card';
-      var avatar = n.photo
-        ? self.el('div', 'width:44px;height:44px;border-radius:50%;flex:none;background:#f0ebe2 center/cover no-repeat url("' + n.photo + '");box-shadow:inset 0 0 0 2px var(--accent-soft)')
-        : self.el('div', 'width:44px;height:44px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex:none', { text: n.mono });
+      var avatar = self.avatarEl(n.photo, n.mono, 44, 15);
       card.appendChild(avatar);
       var body = self.el('div', 'min-width:0;flex:1');
       body.appendChild(self.el('div', 'font-size:9px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis', { text: n.relation }));
@@ -582,9 +596,7 @@ var App = {
     drawer.appendChild(closeb);
 
     var head = this.el('div', 'display:flex;gap:16px;align-items:center;padding-right:30px');
-    head.appendChild(d.photo
-      ? this.el('div', 'width:64px;height:64px;border-radius:50%;flex:none;background:#f0ebe2 center/cover no-repeat url("' + d.photo + '");box-shadow:inset 0 0 0 2px var(--accent-soft)')
-      : this.el('div', 'width:64px;height:64px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:23px;flex:none', { text: d.mono }));
+    head.appendChild(this.avatarEl(d.photo, d.mono, 64, 23));
     var hb = this.el('div', 'min-width:0');
     hb.appendChild(this.el('div', 'font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)', { text: d.relation }));
     hb.appendChild(this.el('div', 'font-family:Spectral,serif;font-size:23px;font-weight:600;color:#2f2a22;line-height:1.1;margin-top:2px', { text: d.main }));
@@ -660,6 +672,22 @@ var App = {
         ssec.appendChild(row);
       });
       drawer.appendChild(ssec);
+    }
+
+    if (d.docs && d.docs.length){
+      var dsec = this.el('div', 'margin-top:16px');
+      dsec.appendChild(this.el('div', 'font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#a59a8c;margin-bottom:8px', { text: 'Документы' }));
+      d.docs.forEach(function(o){
+        var fig = self.el('div', 'margin-bottom:12px');
+        var a = self.el('a', 'display:block'); a.href = o.file; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        var img = self.el('img', 'display:block;width:100%;border-radius:8px;border:1px solid #ece5da;background:#f3eee5');
+        img.src = o.file; img.alt = o.titl || 'Документ'; img.loading = 'lazy';
+        img.onerror = function(){ fig.style.display = 'none'; };
+        a.appendChild(img); fig.appendChild(a);
+        if (o.titl) fig.appendChild(self.el('div', 'font-size:11px;color:#8d8478;margin-top:5px;line-height:1.4', { text: o.titl }));
+        dsec.appendChild(fig);
+      });
+      drawer.appendChild(dsec);
     }
 
     d.groups.forEach(function(g){
