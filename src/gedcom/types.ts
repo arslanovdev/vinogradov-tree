@@ -26,8 +26,9 @@ export interface Indi {
   deat?: GEvent;
   buri?: GEvent;
   resi?: GEvent;
-  obje?: GEvent;
-  photo?: string;
+  media: GEvent[];
+  photo?: string;       // портрет (для аватара)
+  documents: GEvent[];  // сканы документов (наградные, донесения, карточки)
 }
 
 export interface Fam {

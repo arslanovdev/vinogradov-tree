@@ -27,7 +27,7 @@ export function parseGedcom(text: string): Tree {
     if (level === 0) {
       sub = null;
       if (tag === 'INDI' && xref) {
-        cur = indi[xref] = { id: xref, notes: [], sources: [], todo: [], fams: [], famc: null };
+        cur = indi[xref] = { id: xref, notes: [], sources: [], todo: [], fams: [], famc: null, media: [], documents: [] };
         curType = 'I';
       } else if (tag === 'FAM' && xref) {
         cur = fam[xref] = { id: xref, chil: [], notes: [] };
@@ -55,7 +55,7 @@ export function parseGedcom(text: string): Tree {
           case 'DEAT': p.deat = {}; sub = p.deat; break;
           case 'BURI': p.buri = {}; sub = p.buri; break;
           case 'RESI': p.resi = {}; sub = p.resi; break;
-          case 'OBJE': p.obje = {}; sub = p.obje; break;
+          case 'OBJE': { const o: GEvent = {}; p.media.push(o); sub = o; break; }
         }
       } else {
         const f = cur as Fam;
@@ -81,9 +81,16 @@ export function parseGedcom(text: string): Tree {
     }
   }
 
+  // отделяем портрет (аватар) от сканов документов по имени файла/подписи
+  const isDocument = (m: GEvent) =>
+    /(nagradnoy|kartoteka|donesenie|plena|nagrazhdenie)/i.test(m.file || '') ||
+    /(наградн|донесен|карточк|картотек)/i.test(m.titl || '');
   for (const k of Object.keys(indi)) {
     const p = indi[k];
-    if (p.obje && p.obje.file) p.photo = p.obje.file;
+    const withFile = p.media.filter((m) => m.file);
+    const portrait = withFile.find((m) => !isDocument(m));
+    p.photo = portrait?.file;
+    p.documents = withFile.filter((m) => isDocument(m));
   }
 
   return { indi, fam };
