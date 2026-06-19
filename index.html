@@ -90,6 +90,7 @@ var App = {
             case 'DEAT': cur.deat = {}; sub = cur.deat; break;
             case 'BURI': cur.buri = {}; sub = cur.buri; break;
             case 'RESI': cur.resi = {}; sub = cur.resi; break;
+            case 'OBJE': cur.obje = {}; sub = cur.obje; break;
           }
         } else if (curType === 'F') {
           if (tag === 'HUSB') cur.husb = value;
@@ -102,12 +103,16 @@ var App = {
           if (tag === 'DATE') sub.date = value;
           else if (tag === 'PLAC') sub.plac = value;
           else if (tag === 'TYPE') sub.type = value;
+          else if (tag === 'FILE') sub.file = value;
+          else if (tag === 'TITL') sub.titl = value;
+          else if (tag === 'FORM') sub.form = value;
         } else if (curType === 'I') {
           if (tag === 'SURN') cur.surn = value;
           else if (tag === 'GIVN') cur.givn = value;
         }
       }
     }
+    Object.keys(indi).forEach(function(k){ var p = indi[k]; if (p.obje && p.obje.file) p.photo = p.obje.file; });
     this.indi = indi; this.fam = fam;
   },
 
@@ -204,7 +209,7 @@ var App = {
       else if (n.isSibling) relation = p.sex === 'F' ? 'Сестра' : 'Брат';
       else relation = '';
       var conf = self.confOf(p);
-      return { id: n.id, gen: n.gen, x: n.x, y: n.y, accent: cOf(side), soft: sOf(side), main: main, sub: sub, mono: mono, relation: relation, lifespan: self.lifespan(p), confLetter: conf.letter, confShade: conf.shade, mil: self.isMil(p), deceased: !!(p.deat && (p.deat.date || p.deat.type)), delay: (n.gen * 0.08 + 0.15) + 's' };
+      return { id: n.id, gen: n.gen, x: n.x, y: n.y, accent: cOf(side), soft: sOf(side), main: main, sub: sub, mono: mono, photo: p.photo || null, relation: relation, lifespan: self.lifespan(p), confLetter: conf.letter, confShade: conf.shade, mil: self.isMil(p), deceased: !!(p.deat && (p.deat.date || p.deat.type)), delay: (n.gen * 0.08 + 0.15) + 's' };
     });
 
     var links = [];
@@ -329,14 +334,21 @@ var App = {
     var spouses = [], children = [];
     (p.fams || []).forEach(function(fid){ var f = self.fam[fid]; if (!f) return; [f.husb, f.wife].forEach(function(x){ if (x && x !== id) spouses.push(chip(x)); }); (f.chil || []).forEach(function(c){ children.push(chip(c)); }); });
     var groups = [['Родители', parents], ['Супруг(а)', spouses], ['Дети', children], ['Братья и сёстры', siblings]].filter(function(g){ return g[1].length; }).map(function(g){ return { title: g[0], items: g[1] }; });
-    return { accent: cOf(side), soft: sOf(side), main: main, sub: sub, mono: mono, relation: relation, sideLabel: sideLabel, lifespan: this.lifespan(p), conf: this.confOf(p), methodology: methodology, notes: plain, archival: archival, hasArchival: archival.length > 0, sources: sources, hasSources: sources.length > 0, todo: todo, hasTodo: todo.length > 0, facts: facts, groups: groups };
+    return { accent: cOf(side), soft: sOf(side), main: main, sub: sub, mono: mono, photo: p.photo || null, relation: relation, sideLabel: sideLabel, lifespan: this.lifespan(p), conf: this.confOf(p), methodology: methodology, notes: plain, archival: archival, hasArchival: archival.length > 0, sources: sources, hasSources: sources.length > 0, todo: todo, hasTodo: todo.length > 0, facts: facts, groups: groups };
   },
 
   // ссылки на «Память народа» по ID в строке источника + распознаём архив
   linkifySource:function(t){
-    // распознаём слаги документов «Памяти народа» → прямая ссылка на /heroes/<слаг>/
+    // 1) слаги документов «Памяти народа» → прямая ссылка на /heroes/<слаг>/
     var m = t.match(/((?:person-hero|podvig-chelovek_nagrazhdenie|dopolnitelnoe_donesenie|nagrazhdenie)\d{5,})/);
-    return { text: t, url: m ? ('https://pamyat-naroda.ru/heroes/' + m[1] + '/') : null };
+    if (m) return { text: t, url: 'https://pamyat-naroda.ru/heroes/' + m[1] + '/' };
+    // 2) страница персоны Familio → чистая подпись «Familio»
+    var fam = t.match(/familio\.org\/persons\/([0-9a-fA-F-]{36})/);
+    if (fam) return { text: 'Familio — страница персоны', url: 'https://familio.org/persons/' + fam[1] };
+    // 3) Яндекс.Архивы / любой явный URL → кликабельная ссылка с подписью без URL
+    var u = t.match(/(https?:\/\/\S+)/);
+    if (u) { var label = t.replace(u[1], '').replace(/\s*[—-]\s*$/, '').trim(); return { text: label || u[1], url: u[1] }; }
+    return { text: t, url: null };
   },
 
   // ---------- DOM helpers ----------
@@ -408,7 +420,9 @@ var App = {
       wrap.style.setProperty('--conf', n.confShade);
       wrap.style.setProperty('--delay', n.delay);
       var card = self.el('div', null); card.className = 'node-card';
-      var avatar = self.el('div', 'width:44px;height:44px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex:none', { text: n.mono });
+      var avatar = n.photo
+        ? self.el('div', 'width:44px;height:44px;border-radius:50%;flex:none;background:#f0ebe2 center/cover no-repeat url("' + n.photo + '");box-shadow:inset 0 0 0 2px var(--accent-soft)')
+        : self.el('div', 'width:44px;height:44px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex:none', { text: n.mono });
       card.appendChild(avatar);
       var body = self.el('div', 'min-width:0;flex:1');
       body.appendChild(self.el('div', 'font-size:9px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis', { text: n.relation }));
@@ -442,8 +456,13 @@ var App = {
 
     // controls
     var controls = this.el('div', 'position:absolute;right:26px;bottom:26px;display:flex;flex-direction:column;gap:9px;z-index:46');
+    this.controlsEl = controls;
+    var mapBtn = this.el('button', 'border:1px solid #ece5da;border-radius:14px;padding:11px 16px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;box-shadow:0 6px 18px rgba(70,55,40,.1);background:rgba(255,253,249,.95);color:#5b5347', { text: '🗺 Карта' });
+    this.mapBtn = mapBtn;
+    mapBtn.addEventListener('click', function(){ self.toggleMap(); });
+    controls.appendChild(mapBtn);
     var me = this.el('button', 'border:none;border-radius:14px;padding:11px 16px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;box-shadow:0 6px 18px rgba(70,55,40,.15);background:' + this.SELF + ';color:#fffdf9', { text: '◎ Я' });
-    me.className = 'findme';
+    me.className = 'findme'; this.meBtn = me;
     me.addEventListener('click', function(){ self.focus('@I1@', 0.95, self._mobile() ? 0.5 : 0.18); });
     controls.appendChild(me);
     var zbox = this.el('div', 'display:flex;flex-direction:column;background:rgba(255,253,249,.9);backdrop-filter:blur(8px);border:1px solid #ece5da;border-radius:14px;overflow:hidden;box-shadow:0 6px 18px rgba(70,55,40,.08)');
@@ -454,11 +473,18 @@ var App = {
     bOut.addEventListener('click', function(){ self.zoom(1 / 1.2); });
     bFit.addEventListener('click', function(){ self.fit(); });
     zbox.appendChild(bIn); zbox.appendChild(bOut); zbox.appendChild(bFit);
+    this.zbox = zbox;
     controls.appendChild(zbox);
     root.appendChild(controls);
 
+    // карта расселения рода (строится один раз, по умолчанию скрыта)
+    this.mapWrap = this.el('div', 'position:absolute;inset:0;display:none;z-index:12;background:radial-gradient(1200px 800px at 30% 20%,#fbf9f4,#efe8dd)');
+    root.appendChild(this.mapWrap);
+    this.buildMap();
+
     // липкая линейка поколений сверху — следует за колонками при панораме/зуме
     var ruler = this.el('div', 'position:absolute;top:0;left:0;right:0;height:0;pointer-events:none;z-index:15');
+    this.rulerEl = ruler;
     root.appendChild(ruler);
     this.genLabels = [];
     for (var gi = 0; gi <= this.maxGen; gi++) {
@@ -556,7 +582,9 @@ var App = {
     drawer.appendChild(closeb);
 
     var head = this.el('div', 'display:flex;gap:16px;align-items:center;padding-right:30px');
-    head.appendChild(this.el('div', 'width:64px;height:64px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:23px;flex:none', { text: d.mono }));
+    head.appendChild(d.photo
+      ? this.el('div', 'width:64px;height:64px;border-radius:50%;flex:none;background:#f0ebe2 center/cover no-repeat url("' + d.photo + '");box-shadow:inset 0 0 0 2px var(--accent-soft)')
+      : this.el('div', 'width:64px;height:64px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:23px;flex:none', { text: d.mono }));
     var hb = this.el('div', 'min-width:0');
     hb.appendChild(this.el('div', 'font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)', { text: d.relation }));
     hb.appendChild(this.el('div', 'font-family:Spectral,serif;font-size:23px;font-weight:600;color:#2f2a22;line-height:1.1;margin-top:2px', { text: d.main }));
@@ -661,7 +689,7 @@ var App = {
     window.addEventListener('resize', function(){ self.onResize(); });
     window.addEventListener('orientationchange', function(){ self.onResize(); });
   },
-  onResize:function(){ var self=this; if (this._raf) return; this._raf = requestAnimationFrame(function(){ self._raf = null; self.layoutChrome(); self.updateRuler(); self.renderDrawer(); }); },
+  onResize:function(){ var self=this; if (this._raf) return; this._raf = requestAnimationFrame(function(){ self._raf = null; if (self.mapWrap && self.mapWrap.style.display === 'block') return; self.layoutChrome(); self.updateRuler(); self.renderDrawer(); }); },
   apply:function(anim){ if (!this.world) return; this.world.style.transition = anim ? 'transform .5s cubic-bezier(.2,.7,.2,1)' : 'none'; this.world.style.transform = 'translate(' + this.view.x + 'px,' + this.view.y + 'px) scale(' + this.view.s + ')'; this.updateRuler(); },
   onWheel:function(e){
     e.preventDefault();
@@ -708,6 +736,161 @@ var App = {
   cardClick:function(id){ if (this.moved) return; this.selected = id; this.renderDrawer(); },
   goTo:function(id){ this.selected = id; this.renderDrawer(); if (!this._mobile()) this.focus(id, Math.max((this.view && this.view.s) || 0.85, 0.8), 0.42); },
   close:function(){ this.selected = null; this.renderDrawer(); },
+
+  // ----- карта рода (схематичный инфографик; узлы агрегированы по местам) -----
+  _mapNodes:function(){
+    return {
+      gorodok:    { x:130, y:170, name:'Городок',          sub:'Беларусь · фронт',                  kind:'war' },
+      sychevka:   { x:120, y:340, name:'Сычёвка',          sub:'Смоленщина · фронт',                kind:'war' },
+      nikolskoe:  { x:310, y:500, name:'Никольское',       sub:'Самарское Заволжье · истоки рода',  kind:'origin' },
+      kamyshly:   { x:510, y:410, name:'Камышлы',          sub:'Уфимский у. · отсюда фамилия',      kind:'origin' },
+      fedorovsky: { x:735, y:360, name:'Фёдоровский район',sub:'родовое гнездо',                    kind:'home' },
+      sterli:     { x:740, y:205, name:'Бузат · Талачёво', sub:'Стерлибашевский / Стерлитамакский', kind:'home2' },
+      kandalaksha:{ x:560, y:85,  name:'Кандалакша',       sub:'Мурманская обл.',                   kind:'other' }
+    };
+  },
+  _mapArrows:[
+    { from:'nikolskoe', to:'kamyshly',   kind:'mig' },
+    { from:'kamyshly',  to:'fedorovsky', kind:'mig' },
+    { from:'sterli',    to:'fedorovsky', kind:'mig' },
+    { from:'fedorovsky',to:'gorodok',    kind:'war' },
+    { from:'fedorovsky',to:'sychevka',   kind:'war' }
+  ],
+  nodeKey:function(s){
+    if (!s) return null;
+    if (/Верхнеяушево|Ф[её]доровка|Ивановка|Покровка/i.test(s)) return 'fedorovsky';
+    if (/Бузат|Талач[её]во|Кузьминовка/i.test(s)) return 'sterli';
+    if (/Камышлы/i.test(s)) return 'kamyshly';
+    if (/Никольское/i.test(s)) return 'nikolskoe';
+    if (/Городок/i.test(s)) return 'gorodok';
+    if (/Сыч[её]в|Нетертовка/i.test(s)) return 'sychevka';
+    if (/Кандалакша/i.test(s)) return 'kandalaksha';
+    return null;
+  },
+  _mapColor:function(kind){ return { home:'#b1944c', home2:'#84a096', origin:'#b0876a', war:'#a4553f', other:'#9a9183' }[kind] || '#9a9183'; },
+
+  buildMap:function(){
+    var self = this, NS = 'http://www.w3.org/2000/svg';
+    var nodes = this._mapNodes(), keys = Object.keys(nodes);
+    // подсчёт людей по узлам
+    var peopleAt = {}; keys.forEach(function(k){ peopleAt[k] = []; });
+    Object.keys(this.indi).forEach(function(id){
+      var p = self.indi[id], seen = {};
+      ['birt','deat','buri','resi'].forEach(function(f){ if (p[f] && p[f].plac){ var k = self.nodeKey(p[f].plac); if (k && !seen[k]){ seen[k] = 1; peopleAt[k].push(id); } } });
+    });
+    this._peopleAt = peopleAt;
+
+    var W = 860, H = 580;
+    var svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.setAttribute('style', 'position:absolute;inset:0;width:100%;height:100%');
+    // стрелки-маркеры
+    var defs = document.createElementNS(NS, 'defs');
+    [['mig','#b0876a'],['war','#a4553f']].forEach(function(a){
+      var mk = document.createElementNS(NS, 'marker');
+      mk.setAttribute('id', 'ah-' + a[0]); mk.setAttribute('viewBox','0 0 10 10'); mk.setAttribute('refX','8'); mk.setAttribute('refY','5');
+      mk.setAttribute('markerWidth','7'); mk.setAttribute('markerHeight','7'); mk.setAttribute('orient','auto-start-reverse');
+      var pa = document.createElementNS(NS, 'path'); pa.setAttribute('d','M0,0 L10,5 L0,10 z'); pa.setAttribute('fill', a[1]); pa.setAttribute('opacity','.65');
+      mk.appendChild(pa); defs.appendChild(mk);
+    });
+    svg.appendChild(defs);
+
+    // дуги
+    this._mapArrows.forEach(function(a){
+      var f = nodes[a.from], t = nodes[a.to];
+      if (!f || !t || !peopleAt[a.from] || !peopleAt[a.to]) return;
+      var mx = (f.x + t.x) / 2, my = (f.y + t.y) / 2 - 46;
+      var pth = document.createElementNS(NS, 'path');
+      pth.setAttribute('d', 'M' + f.x + ',' + f.y + ' Q' + mx + ',' + my + ' ' + t.x + ',' + t.y);
+      pth.setAttribute('fill','none');
+      pth.setAttribute('stroke', a.kind === 'war' ? '#a4553f' : '#b0876a');
+      pth.setAttribute('stroke-width', a.kind === 'war' ? '1.6' : '2.4');
+      pth.setAttribute('stroke-opacity', a.kind === 'war' ? '.5' : '.7');
+      if (a.kind === 'war') pth.setAttribute('stroke-dasharray','6,7');
+      pth.setAttribute('marker-end', 'url(#ah-' + (a.kind === 'war' ? 'war' : 'mig') + ')');
+      svg.appendChild(pth);
+    });
+
+    // узлы
+    keys.forEach(function(k){
+      var n = nodes[k], cnt = peopleAt[k].length;
+      var col = self._mapColor(n.kind);
+      var r = 13 + Math.min(cnt, 18) * 1.7;
+      var g = document.createElementNS(NS, 'g');
+      g.setAttribute('style', 'cursor:' + (cnt ? 'pointer' : 'default'));
+      var c = document.createElementNS(NS, 'circle');
+      c.setAttribute('cx', n.x); c.setAttribute('cy', n.y); c.setAttribute('r', r);
+      c.setAttribute('fill', col); c.setAttribute('fill-opacity', cnt ? '.9' : '.25');
+      c.setAttribute('stroke', '#fffdf9'); c.setAttribute('stroke-width', '3');
+      g.appendChild(c);
+      if (cnt){
+        var ct = document.createElementNS(NS, 'text');
+        ct.setAttribute('x', n.x); ct.setAttribute('y', n.y + 5); ct.setAttribute('text-anchor','middle');
+        ct.setAttribute('style', 'font:800 ' + (cnt > 9 ? 15 : 17) + 'px Manrope,sans-serif;fill:#fffdf9');
+        ct.textContent = cnt; g.appendChild(ct);
+      }
+      var left = n.x > W * 0.62;
+      var tx = left ? n.x - r - 12 : n.x + r + 12, anc = left ? 'end' : 'start';
+      var t1 = document.createElementNS(NS, 'text');
+      t1.setAttribute('x', tx); t1.setAttribute('y', n.y - 2); t1.setAttribute('text-anchor', anc);
+      t1.setAttribute('style', 'font:700 16px Spectral,serif;fill:#322c24'); t1.textContent = n.name + (n.kind === 'war' ? ' ✝' : '');
+      var t2 = document.createElementNS(NS, 'text');
+      t2.setAttribute('x', tx); t2.setAttribute('y', n.y + 16); t2.setAttribute('text-anchor', anc);
+      t2.setAttribute('style', 'font:600 11.5px Manrope,sans-serif;fill:#8d8478'); t2.textContent = n.sub + (cnt ? '  ·  ' + cnt + ' чел.' : '');
+      g.appendChild(t1); g.appendChild(t2);
+      if (cnt) g.addEventListener('click', function(){ self.openPlace(k); });
+      svg.appendChild(g);
+    });
+    this.mapWrap.appendChild(svg);
+
+    // заголовок и подпись
+    var title = this.el('div', 'position:absolute;left:30px;top:26px;pointer-events:none');
+    title.innerHTML = '<div style="font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:#a08f5f">Карта рода</div>'
+      + '<div style="font-family:Spectral,serif;font-size:24px;font-weight:600;color:#322c24;margin-top:4px">Откуда мы</div>'
+      + '<div style="font-size:12px;color:#7d7468;margin-top:6px;max-width:300px;line-height:1.5">Схематично — по местам рождения, жизни и гибели. Линии: переселение рода; пунктир — фронтовые судьбы.</div>';
+    this.mapWrap.appendChild(title);
+    // панель людей по месту
+    this.mapPanel = this.el('div', 'display:none'); this.mapWrap.appendChild(this.mapPanel);
+  },
+
+  openPlace:function(key){
+    var self = this, nodes = this._mapNodes(), n = nodes[key], ids = (this._peopleAt && this._peopleAt[key]) || [];
+    var mobile = this._mobile();
+    var p = this.mapPanel; p.innerHTML = ''; p.style.display = 'block';
+    p.setAttribute('class', 'dt-scroll');
+    p.setAttribute('style', mobile
+      ? 'position:absolute;left:0;right:0;bottom:0;height:62%;background:#fffdf9;border-top:1px solid #ece5da;border-radius:22px 22px 0 0;box-shadow:0 -16px 50px rgba(60,48,34,.2);padding:14px 18px 20px;overflow-y:auto;z-index:20;animation:sheetIn .4s cubic-bezier(.2,.7,.2,1) both'
+      : 'position:absolute;top:0;right:0;height:100%;width:380px;max-width:92vw;background:#fffdf9;border-left:1px solid #ece5da;box-shadow:-20px 0 50px rgba(60,48,34,.14);padding:24px;overflow-y:auto;z-index:20;animation:drawerIn .4s cubic-bezier(.2,.7,.2,1) both');
+    var close = this.el('button', 'position:absolute;right:16px;top:16px;width:32px;height:32px;border-radius:50%;border:1px solid #ece5da;background:#fff;font-size:16px;color:#8d8478;cursor:pointer', { text: '✕' });
+    close.addEventListener('click', function(){ p.style.display = 'none'; });
+    p.appendChild(close);
+    p.appendChild(this.el('div', 'font-family:Spectral,serif;font-size:21px;font-weight:600;color:#2f2a22;padding-right:30px', { text: n.name }));
+    p.appendChild(this.el('div', 'font-size:12.5px;color:#8d8478;margin-bottom:14px', { text: n.sub + '  ·  ' + ids.length + ' чел.' }));
+    ids.forEach(function(id){
+      var per = self.indi[id], np = self.nameParts(per);
+      var row = self.el('button', 'display:flex;width:100%;text-align:left;gap:10px;align-items:center;background:none;border:none;border-bottom:1px solid #f1ece3;padding:9px 2px;cursor:pointer;font-family:inherit');
+      row.appendChild(self.el('span', 'font-size:14px;color:#352f28;flex:1', { text: [np.main, np.sub].filter(Boolean).join(' ') }));
+      row.appendChild(self.el('span', 'font-size:11px;color:#a08f5f', { text: self.relationFor(id, per, self.sideById[id] || 'self') }));
+      row.addEventListener('click', function(){ self.toggleMap(false); self.goTo(id); });
+      p.appendChild(row);
+    });
+  },
+
+  toggleMap:function(on){
+    var show = (on === undefined) ? (this.mapWrap.style.display === 'none') : on;
+    this.mapWrap.style.display = show ? 'block' : 'none';
+    if (this.vp) this.vp.style.display = show ? 'none' : '';
+    if (this.zbox) this.zbox.style.display = show ? 'none' : '';
+    if (this.meBtn) this.meBtn.style.display = show ? 'none' : '';
+    if (this.rulerEl) this.rulerEl.style.display = show ? 'none' : '';
+    if (this.legendEl) this.legendEl.style.display = show ? 'none' : '';
+    if (this.headerEl) this.headerEl.style.display = show ? 'none' : '';
+    if (this.infoBtn) this.infoBtn.style.display = show ? 'none' : (this._mobile() ? '' : 'none');
+    if (this.mapBtn) this.mapBtn.textContent = show ? '🌳 Древо' : '🗺 Карта';
+    if (show){ if (this.selected){ this.selected = null; this.renderDrawer(); } if (this.mapPanel) this.mapPanel.style.display = 'none'; }
+    else { this.layoutChrome(); this.updateRuler(); }
+  },
 
   init:function(){
     var self = this;
