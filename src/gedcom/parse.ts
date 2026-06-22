@@ -127,4 +127,9 @@ export function validate(tree: Tree): Issue[] {
     for (const fs of p.fams) if (!fam[fs]) issues.push({ level: 'warn', msg: `${p.id}: FAMS ${fs} не найдена` });
   }
   for (const f of Object.values(fam)) {
-    for (const c of f.chil) if (!indi[
+    for (const c of f.chil) if (!indi[c]) issues.push({ level: 'warn', msg: `${f.id}: ребёнок ${c} не найден` });
+    if (f.husb && !indi[f.husb]) issues.push({ level: 'warn', msg: `${f.id}: HUSB ${f.husb} не найден` });
+    if (f.wife && !indi[f.wife]) issues.push({ level: 'warn', msg: `${f.id}: WIFE ${f.wife} не найдена` });
+  }
+  return issues;
+}

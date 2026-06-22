@@ -47,4 +47,4 @@ export interface Tree {
   fam: Record<string, Fam>;
 }
 
-export type Side = 'paternal' | 'mat
+export type Side = 'paternal' | 'maternal' | 'self';
