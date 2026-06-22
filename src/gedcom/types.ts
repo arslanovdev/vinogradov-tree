@@ -5,6 +5,7 @@ export interface GEvent {
   file?: string;
   titl?: string;
   form?: string;
+  kind?: string;
   lat?: number;
   lon?: number;
 }
@@ -46,4 +47,4 @@ export interface Tree {
   fam: Record<string, Fam>;
 }
 
-export type Side = 'paternal' | 'maternal' | 'self';
+export type Side = 'paternal' | 'mat

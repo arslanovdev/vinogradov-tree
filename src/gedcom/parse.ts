@@ -81,6 +81,7 @@ export function parseGedcom(text: string): Tree {
         else if (tag === 'FILE') sub.file = value ?? undefined;
         else if (tag === 'TITL') sub.titl = value ?? undefined;
         else if (tag === 'FORM') sub.form = value ?? undefined;
+        else if (tag === '_KIND') sub.kind = value ?? undefined;
       } else if (curType === 'I' && cur) {
         const p = cur as Indi;
         if (tag === 'SURN') p.surn = value ?? undefined;
@@ -94,10 +95,12 @@ export function parseGedcom(text: string): Tree {
     }
   }
 
-  // отделяем портрет (аватар) от сканов документов по имени файла/подписи
+  // отделяем портрет (аватар) от сканов документов: явный тег _KIND doc — приоритет,
+  // плюс эвристика по имени файла/подписи (наградные, донесения, карточки, ревизии, переписи)
   const isDocument = (m: GEvent) =>
-    /(nagradnoy|kartoteka|donesenie|plena|nagrazhdenie)/i.test(m.file || '') ||
-    /(наградн|донесен|карточк|картотек)/i.test(m.titl || '');
+    m.kind === 'doc' ||
+    /(nagradnoy|kartoteka|donesenie|plena|nagrazhdenie|_rs\d|reviz|perepis)/i.test(m.file || '') ||
+    /(наградн|донесен|карточк|картотек|ревиз|перепис|подворн|сказк|\bРС\b)/i.test(m.titl || '');
   for (const k of Object.keys(indi)) {
     const p = indi[k];
     const withFile = p.media.filter((m) => m.file);
@@ -124,9 +127,4 @@ export function validate(tree: Tree): Issue[] {
     for (const fs of p.fams) if (!fam[fs]) issues.push({ level: 'warn', msg: `${p.id}: FAMS ${fs} не найдена` });
   }
   for (const f of Object.values(fam)) {
-    for (const c of f.chil) if (!indi[c]) issues.push({ level: 'warn', msg: `${f.id}: ребёнок ${c} не найден` });
-    if (f.husb && !indi[f.husb]) issues.push({ level: 'warn', msg: `${f.id}: HUSB ${f.husb} не найден` });
-    if (f.wife && !indi[f.wife]) issues.push({ level: 'warn', msg: `${f.id}: WIFE ${f.wife} не найдена` });
-  }
-  return issues;
-}
+    for (const c of f.chil) if (!indi[
