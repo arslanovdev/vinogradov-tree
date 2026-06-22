@@ -162,6 +162,8 @@
   .zbox button { display: flex; align-items: center; justify-content: center; background: none; border: none; border-bottom: 1px solid #efe9df; width: 46px; height: 42px; color: #5b5347; cursor: pointer; font-family: inherit; }
   .zbox button:last-child { border-bottom: none; }
   .zbox button:hover { background: #f6f1e8; }
-  /* мобайл: поднимаем контролы над нижней полосой поиска, чтобы поиск не лежал поверх них */
+  /* мобайл: контролы над нижней полосой поиска */
   @media (max-width: 640px) { .controls { bottom: 74px; } }
-  @keyframes floaty { 0% { tran
+  @keyframes floaty { 0% { transform: translate(0,0); } 50% { transform: translate(26px,-30px); } 100% { transform: translate(0,0); } }
+  @keyframes hdrIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+</style>
