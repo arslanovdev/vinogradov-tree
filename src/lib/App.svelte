@@ -156,12 +156,12 @@
   .ctl.light:hover { background: #f6f1e8; }
   .ctl.accent { background: var(--self); color: #fffdf9; border: none; box-shadow: 0 6px 18px rgba(70,55,40,0.18); }
   .ctl.accent:hover { filter: brightness(1.06); }
-  .info { position: absolute; left: 16px; bottom: 26px; z-index: 45; }
+  .info { position: absolute; left: 16px; bottom: 74px; z-index: 45; }
   .controls { position: absolute; right: 26px; bottom: 26px; display: flex; flex-direction: column; align-items: center; gap: 9px; z-index: 46; }
   .zbox { display: flex; flex-direction: column; width: 46px; background: rgba(255,253,249,0.9); backdrop-filter: blur(8px); border: 1px solid #ece5da; border-radius: 14px; overflow: hidden; box-shadow: 0 6px 18px rgba(70,55,40,0.08); }
   .zbox button { display: flex; align-items: center; justify-content: center; background: none; border: none; border-bottom: 1px solid #efe9df; width: 46px; height: 42px; color: #5b5347; cursor: pointer; font-family: inherit; }
   .zbox button:last-child { border-bottom: none; }
   .zbox button:hover { background: #f6f1e8; }
-  @keyframes floaty { 0% { transform: translate(0,0); } 50% { transform: translate(26px,-30px); } 100% { transform: translate(0,0); } }
-  @keyframes hdrIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
-</style>
+  /* мобайл: поднимаем контролы над нижней полосой поиска, чтобы поиск не лежал поверх них */
+  @media (max-width: 640px) { .controls { bottom: 74px; } }
+  @keyframes floaty { 0% { tran

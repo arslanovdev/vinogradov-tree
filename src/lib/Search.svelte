@@ -71,7 +71,8 @@
 <style>
   .search { position: absolute; z-index: 47; font-family: Manrope, sans-serif; }
   .search.desk { left: 30px; bottom: 26px; width: 300px; }
-  .search.mob { left: 14px; right: 14px; bottom: 84px; }
+  /* мобайл: поиск — широкая полоса у самого низа; инфо и контролы подняты НАД ним (см. App.svelte) */
+  .search.mob { left: 14px; right: 14px; bottom: 14px; }
   .box { display: flex; align-items: center; gap: 8px; background: rgba(255,253,249,0.96); backdrop-filter: blur(8px); border: 1px solid #e7decb; border-radius: 13px; padding: 9px 12px; box-shadow: 0 6px 20px rgba(70,55,40,0.1); }
   .box:focus-within { border-color: #cdbd96; box-shadow: 0 8px 26px rgba(70,55,40,0.16); }
   input { flex: 1; border: none; outline: none; background: none; font-family: inherit; font-size: 14px; color: #352f28; min-width: 0; }
@@ -87,7 +88,4 @@
   .main { font-family: Spectral, serif; font-size: 14.5px; font-weight: 600; color: #322c24; }
   .sub { font-size: 12px; color: #6a6358; }
   .meta { display: flex; gap: 8px; align-items: center; margin-top: 1px; }
-  .rel { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #a08f5f; }
-  .life { font-size: 11px; color: #8d8478; font-variant-numeric: tabular-nums; }
-  .empty { padding: 12px 14px; font-size: 13px; color: #8d8478; }
-</style>
+  .rel { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #a
