@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { parseGedcom, validate } from '../src/gedcom/parse';
 import { buildLayout } from '../src/model/layout';
-import { relAnc, nameParts, confOf, linkifySource } from '../src/model/derive';
+import { relAnc, nameParts, confOf, linkifySource, fmtDate } from '../src/model/derive';
 import { mapPlaces } from '../src/model/places';
 
 const ged = readFileSync(fileURLToPath(new URL('../public/fedorovka_family.ged', import.meta.url)), 'utf-8');
@@ -37,7 +37,7 @@ describe('derive', () => {
   });
   it('hides retrospective surname', () => {
     const np = nameParts(tree.indi['@I70@']);
-    expect(np.main).toBe('Иван Павлов');
+    expect(np.main).toBe('Иван Моисеев');
     expect(np.retroSurn).toBe('Камышлов');
   });
   it('reads confidence from [ТОЧНОСТЬ]/RELI/QUAY', () => {
@@ -46,6 +46,10 @@ describe('derive', () => {
   it('linkifies pamyat-naroda ids', () => {
     expect(linkifySource('person-hero122489359').url).toContain('/heroes/person-hero122489359/');
     expect(linkifySource('ЦАМО').url).toBeNull();
+  });
+  it('formats GEDCOM between ranges compactly', () => {
+    expect(fmtDate('BET 1789 AND 1794')).toBe('1789\u20131794');
+    expect(fmtDate('BEF 1695')).toBe('до 1695');
   });
 });
 

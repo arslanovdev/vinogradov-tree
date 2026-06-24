@@ -36,9 +36,9 @@
 </script>
 
 {#if d}
-  <div class="backdrop" onclick={onclose} role="button" tabindex="-1" aria-label="Закрыть"></div>
+  <button class="backdrop" onclick={onclose} aria-label="Закрыть"></button>
   <div class="drawer" class:mobile style="--accent:{d.accent};--soft:{d.soft};--conf:{d.conf.shade}">
-    {#if mobile}<div class="grab" onclick={onclose} role="button" tabindex="-1"><span></span></div>{/if}
+    {#if mobile}<button class="grab" onclick={onclose} aria-label="Закрыть"><span></span></button>{/if}
     <button class="close" onclick={onclose} aria-label="Закрыть"><X size={17} strokeWidth={2} /></button>
 
     <div class="head">
@@ -57,7 +57,7 @@
     <div class="pills">
       <span class="pill soft">{d.sideLabel}</span>
       <span class="pill grey nums">{d.lifespan}</span>
-      <span class="pill grey"><span class="cbadge">{d.conf.letter}</span>{d.conf.label}</span>
+      <span class="pill grey" title={d.methodology ?? d.conf.label}><span class="cbadge">{d.conf.letter}</span>{d.conf.label}</span>
     </div>
 
     {#each d.facts as f}
@@ -65,13 +65,6 @@
     {/each}
 
     {#each d.notes as t}<div class="note">{t}</div>{/each}
-
-    {#if d.methodology}
-      <div class="box method">
-        <div class="boxh">Оценка достоверности</div>
-        <div class="boxb">{d.methodology}</div>
-      </div>
-    {/if}
 
     {#if d.todo.length}
       <div class="box todo">
@@ -117,9 +110,13 @@
       <div class="sec">
         <div class="sech">Источники</div>
         {#each d.sources as s}
-          <div class="srow">
+          <div class="srow sourcecard">
             <span class="sx"><FileText size={13} strokeWidth={2} /></span>
-            {#if s.url}<a href={s.url} target="_blank" rel="noopener noreferrer">{s.text}</a>{:else}<span class="stext">{s.text}</span>{/if}
+            <div class="sbody">
+              {#if s.url}<a class="stitle" href={s.url} target="_blank" rel="noopener noreferrer">{s.title}</a>{:else}<span class="stitle">{s.title}</span>{/if}
+              {#if s.detail}<span class="sdetail">{s.detail}</span>{/if}
+              {#if s.repository}<span class="srepo">{s.repository}</span>{/if}
+            </div>
           </div>
         {/each}
       </div>
@@ -137,7 +134,8 @@
   </div>
 
   {#if lightbox}
-    <div class="lightbox" onclick={() => (lightbox = null)} role="button" tabindex="-1" aria-label="Закрыть">
+    <div class="lightbox" role="dialog" aria-modal="true" aria-label={lightbox.caption}>
+      <button class="lightboxhit" onclick={() => (lightbox = null)} aria-label="Закрыть"></button>
       <figure>
         <img src={lightbox.src} alt={lightbox.caption} />
         <figcaption>{lightbox.caption}</figcaption>
@@ -148,10 +146,10 @@
 {/if}
 
 <style>
-  .backdrop { position: absolute; inset: 0; background: rgba(45,38,30,0.26); backdrop-filter: blur(2px); z-index: 55; animation: bin 0.3s ease both; }
-  .drawer { position: absolute; top: 0; right: 0; height: 100%; width: 442px; max-width: 94vw; background: #fffdf9; border-left: 1px solid #ece5da; box-shadow: -20px 0 50px rgba(60,48,34,0.14); padding: 26px; overflow-y: auto; z-index: 60; animation: din 0.42s cubic-bezier(0.2,0.7,0.2,1) both; font-family: Manrope, sans-serif; }
-  .drawer.mobile { top: auto; bottom: 0; right: 0; left: 0; width: 100%; height: 86%; border-left: none; border-top: 1px solid #ece5da; border-radius: 24px 24px 0 0; box-shadow: 0 -16px 50px rgba(60,48,34,0.2); padding: 8px 18px 20px; animation: sin 0.42s cubic-bezier(0.2,0.7,0.2,1) both; }
-  .grab { display: flex; justify-content: center; padding: 4px 0 12px; cursor: pointer; }
+  .backdrop { position: absolute; inset: 0; padding: 0; border: none; background: rgba(45,38,30,0.26); backdrop-filter: blur(2px); z-index: 55; animation: bin 0.3s ease both; cursor: pointer; }
+  .drawer { position: absolute; top: 0; right: 0; height: 100%; width: 442px; max-width: 94vw; box-sizing: border-box; background: #fffdf9; border-left: 1px solid #ece5da; box-shadow: -20px 0 50px rgba(60,48,34,0.14); padding: 26px; overflow-y: auto; overflow-x: hidden; z-index: 60; animation: din 0.42s cubic-bezier(0.2,0.7,0.2,1) both; font-family: Manrope, sans-serif; }
+  .drawer.mobile { top: auto; bottom: 0; right: 0; left: 0; width: 100%; max-width: none; height: 86%; border-left: none; border-top: 1px solid #ece5da; border-radius: 24px 24px 0 0; box-shadow: 0 -16px 50px rgba(60,48,34,0.2); padding: 8px 18px 20px; animation: sin 0.42s cubic-bezier(0.2,0.7,0.2,1) both; }
+  .grab { display: flex; justify-content: center; width: 100%; padding: 4px 0 12px; cursor: pointer; border: none; background: transparent; }
   .grab span { width: 42px; height: 5px; border-radius: 3px; background: #ddd3c4; }
   .close { position: absolute; right: 18px; top: 18px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid #ece5da; background: #fff; font-size: 17px; color: #8d8478; cursor: pointer; line-height: 1; }
   .close:hover { background: #f6f1e8; color: #5b5347; }
@@ -168,8 +166,9 @@
   .docph { width: 100%; aspect-ratio: 1; border-radius: 10px; border: 1px dashed #d8cdba; background: #faf6ee; display: flex; align-items: center; justify-content: center; color: #bdae8e; }
   .doccap { font-size: 10px; line-height: 1.25; color: #8d8478; }
   .doctile.pending .doccap { color: #b3a995; }
-  .lightbox { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; background: rgba(28,23,18,0.82); backdrop-filter: blur(4px); animation: bin 0.25s ease both; cursor: zoom-out; padding: 24px; padding-top: max(24px, env(safe-area-inset-top)); padding-bottom: max(24px, env(safe-area-inset-bottom)); }
-  .lightbox figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; cursor: zoom-out; }
+  .lightbox { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; background: rgba(28,23,18,0.82); backdrop-filter: blur(4px); animation: bin 0.25s ease both; padding: 24px; padding-top: max(24px, env(safe-area-inset-top)); padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+  .lightboxhit { position: absolute; inset: 0; border: none; background: transparent; cursor: zoom-out; }
+  .lightbox figure { position: relative; z-index: 1; margin: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; }
   .lightbox img { max-width: min(92vw, 540px); max-height: 76vh; border-radius: 14px; box-shadow: 0 24px 70px rgba(0,0,0,0.5); }
   .lightbox figcaption { font-family: Spectral, serif; font-size: 16px; color: #f4ece0; text-align: center; max-width: 92vw; }
   .lclose { position: absolute; top: max(16px, env(safe-area-inset-top)); right: 16px; width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -188,14 +187,12 @@
   .fval { font-size: 13.5px; color: #3c362e; line-height: 1.45; }
   .note { font-size: 13.5px; color: #4a443b; line-height: 1.6; margin-top: 13px; }
   .box { margin-top: 14px; border-radius: 13px; padding: 12px 14px; }
-  .method { background: #faf6ee; border: 1px solid #efe7d8; }
   .todo { background: #f4f7f3; border: 1px solid #dfe9df; }
   .boxh { font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #a59a8c; margin-bottom: 5px; }
   .boxh.green { color: #7e9483; margin-bottom: 8px; }
   .boxh.ic { display: inline-flex; align-items: center; gap: 6px; }
   .todorow :global(svg) { flex: none; margin-top: 1px; }
   .close { display: flex; align-items: center; justify-content: center; }
-  .boxb { font-size: 12.5px; color: #5b5347; line-height: 1.55; }
   .todorow { display: flex; gap: 9px; align-items: flex-start; padding: 5px 0; font-size: 12.5px; color: #46514a; line-height: 1.55; }
   .todorow span:first-child { color: #84a096; }
   .sec { margin-top: 16px; }
@@ -206,9 +203,13 @@
   .adate { font-size: 11px; color: #a59a8c; font-variant-numeric: tabular-nums; }
   .abody { font-size: 12.5px; color: #4a443b; line-height: 1.65; }
   .srow { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid #f1ece3; }
+  .sourcecard { border: 1px solid #efe9df; border-radius: 8px; padding: 10px 11px; margin-bottom: 7px; background: #fffbf5; }
   .sx { color: var(--accent); font-size: 13px; flex: none; }
-  .srow a { font-size: 12px; color: var(--accent); line-height: 1.5; word-break: break-word; text-underline-offset: 2px; }
-  .stext { font-size: 12px; color: #6a6358; line-height: 1.5; word-break: break-word; }
+  .sbody { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .srow a { color: var(--accent); text-underline-offset: 2px; }
+  .stitle { font-size: 12.5px; font-weight: 700; color: #3f382f; line-height: 1.35; word-break: break-word; }
+  .sdetail { font-size: 11.5px; color: #6a6358; line-height: 1.45; word-break: break-word; }
+  .srepo { align-self: flex-start; margin-top: 2px; border-radius: 999px; background: var(--soft); color: var(--accent); padding: 2px 7px; font-size: 9.5px; font-weight: 700; }
   .chips { display: flex; flex-wrap: wrap; gap: 7px; }
   .chip { background: var(--soft); color: var(--accent); border: none; border-radius: 999px; padding: 7px 13px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
   .chip:hover { filter: brightness(0.96); transform: translateY(-1px); }

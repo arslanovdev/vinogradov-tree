@@ -95,7 +95,15 @@ const MN: Record<string, string> = { JAN: 'январь', FEB: 'февраль',
 export function fmtDate(d?: string): string | null {
   if (!d) return null;
   let s = ('' + d).trim(), pre = '';
+  const between = s.match(/^BET\s+(.+?)\s+AND\s+(.+)$/i);
+  if (between) {
+    const a = yr(between[1]) || between[1].trim();
+    const b = yr(between[2]) || between[2].trim();
+    return `${a}–${b}`;
+  }
   if (/^ABT/i.test(s)) { pre = 'около '; s = s.replace(/^ABT\s*/i, ''); }
+  else if (/^BEF/i.test(s)) { pre = 'до '; s = s.replace(/^BEF\s*/i, ''); }
+  else if (/^AFT/i.test(s)) { pre = 'после '; s = s.replace(/^AFT\s*/i, ''); }
   const t = s.split(/\s+/);
   let out = s;
   if (t.length === 3) out = +t[0] + ' ' + (MG[t[1].toUpperCase()] || t[1]) + ' ' + t[2];

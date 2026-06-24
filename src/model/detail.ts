@@ -5,7 +5,7 @@ import { relAnc, confOf, lifespan, fmtDate, nameParts, linkifySource, colorOf, s
 export interface Chip { id: string; name: string; }
 export interface Fact { label: string; value: string; }
 export interface Archival { date: string | null; body: string; }
-export interface SourceRef { text: string; url: string | null; }
+export interface SourceRef { title: string; detail: string | null; repository: string | null; url: string | null; }
 export interface Group { title: string; items: Chip[]; }
 export interface DocRef { file: string; title: string; }
 
@@ -35,6 +35,54 @@ function docLabel(file: string, titl?: string): string {
   return 'Документ';
 }
 
+function cleanupSourceText(text: string): string {
+  return text
+    .replace(/^Familio(?:\s*\([^)]*\))?\s*[—-]\s*/i, '')
+    .replace(/^pamyat-naroda\.ru\s*[—-]\s*/i, '')
+    .replace(/\s*https?:\/\/\S+\s*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function sourceTitle(text: string): string {
+  if (/наградн/i.test(text)) return 'Наградной лист';
+  if (/донесен|потер/i.test(text)) return 'Донесение о потерях';
+  if (/военноплен|плен/i.test(text)) return 'Карточка военнопленного';
+  if (/перепис[ьи]\s*1917|подворн/i.test(text)) return 'Подворная карточка переписи 1917';
+  if (/РС\s*1850|ревиз/i.test(text) && /1850/.test(text)) return 'Ревизская сказка 1850';
+  if (/РС\s*1834|ревиз/i.test(text) && /1834/.test(text)) return 'Ревизская сказка 1834';
+  if (/РС\s*1811|ревиз/i.test(text) && /1811/.test(text)) return 'Ревизская сказка 1811';
+  if (/метрик|метрич/i.test(text)) return 'Метрическая книга';
+  if (/Они вернулись с Победой/i.test(text)) return 'Книга «Они вернулись с Победой»';
+  if (/Герои тыла/i.test(text)) return 'Книга «Герои тыла»';
+  if (/Книга памяти/i.test(text)) return 'Книга памяти';
+  const tree = text.match(/Familio\s*\((древо[^)]*)\)/i);
+  if (tree) return tree[1][0].toUpperCase() + tree[1].slice(1);
+  if (/Familio/i.test(text) && /familio\.org\/persons\//i.test(text)) return 'Профиль Familio';
+  const first = cleanupSourceText(text).split(/[.;:]/)[0].trim();
+  return first.length > 80 ? first.slice(0, 77) + '...' : first || 'Источник';
+}
+
+function sourceRepository(text: string): string | null {
+  if (/pamyat-naroda|ЦАМО|person-hero|podvig-chelovek|donesenie|nagrazhdenie/i.test(text)) return 'Память народа / ЦАМО';
+  if (/Familio/i.test(text)) return 'Familio';
+  if (/НА РБ|ф\.[РИИ]-|фонд/i.test(text)) return 'НА РБ';
+  if (/РГБ|viewer\.rsl/i.test(text)) return 'РГБ';
+  if (/Яндекс|yandex/i.test(text)) return 'Яндекс Архив';
+  return null;
+}
+
+function formatSource(text: string): SourceRef {
+  const directUrl = text.match(/https?:\/\/\S+/)?.[0] ?? null;
+  const linked = linkifySource(text);
+  const url = directUrl || linked.url;
+  const title = sourceTitle(text);
+  let detail = cleanupSourceText(text);
+  detail = detail.replace(title, '').replace(/^[\s:—-]+/, '').trim();
+  const repository = /Familio/i.test(title) ? null : sourceRepository(text);
+  return { title, detail: detail || null, repository, url };
+}
+
 export function relationFor(tree: Tree, id: string, layout: Layout): string {
   const p = tree.indi[id];
   if (layout.rel[id]) return relAnc(layout.rel[id].depth, p.sex, layout.rel[id].side);
@@ -59,7 +107,7 @@ export function buildDetail(tree: Tree, id: string, layout: Layout): Detail | nu
   const notes = p.notes;
   const methodology = notes.map((n) => { const m = n.match(/^\s*\[ТОЧНОСТЬ\s+[ABC]\]\s*(.*)$/); return m ? m[1] : null; }).find(Boolean) || null;
   // показываем все заметки, кроме служебных (достоверность/ПН/лиды/ретро-фамилия) — остальные теги ([СЕМЬЯ], [FAMILIO], [ДОРОГА ПАМЯТИ]…) видимы
-  const SERVICE = /^\s*\[(?:ТОЧНОСТЬ|ПН|ИСКАТЬ|ЛИДЫ|TODO|ФАМИЛИЯ)/i;
+  const SERVICE = /^\s*\[(?:ТОЧНОСТЬ|ПН|АРХИВ|ИСКАТЬ|ЛИДЫ|TODO|ФАМИЛИЯ)/i;
   const plain = notes.filter((n) => !SERVICE.test(n));
   const archival: Archival[] = notes.filter((n) => /^\s*\[ПН/.test(n)).map((n) => {
     const m = n.match(/^\s*\[ПН\s*([0-9.]+)?([^\]]*)\]\s*([\s\S]*)$/);
@@ -70,8 +118,8 @@ export function buildDetail(tree: Tree, id: string, layout: Layout): Detail | nu
 
   const sources: SourceRef[] = [];
   p.sources.forEach((s) => s.split(/\s*;\s*/).forEach((t) => {
-    const v = t.trim().replace(/^pamyat-naroda\.ru\s*[—-]\s*/i, '');
-    if (v) sources.push(linkifySource(v));
+    const v = t.trim();
+    if (v) sources.push(formatSource(v));
   }));
 
   const facts: Fact[] = [];
