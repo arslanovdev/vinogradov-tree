@@ -49,6 +49,8 @@ function sourceTitle(text: string): string {
   if (/донесен|потер/i.test(text)) return 'Донесение о потерях';
   if (/военноплен|плен/i.test(text)) return 'Карточка военнопленного';
   if (/перепис[ьи]\s*1917|подворн/i.test(text)) return 'Подворная карточка переписи 1917';
+  if (/РС\s*1816\s*\/\s*1820|ревиз/i.test(text) && /1816/.test(text) && /1820/.test(text)) return 'Ревизская сказка 1816/1820';
+  if (/РС\s*1850\s*\/\s*1856|ревиз/i.test(text) && /1850/.test(text) && /1856/.test(text)) return 'Ревизская сказка 1850/1856';
   if (/РС\s*1850|ревиз/i.test(text) && /1850/.test(text)) return 'Ревизская сказка 1850';
   if (/РС\s*1834|ревиз/i.test(text) && /1834/.test(text)) return 'Ревизская сказка 1834';
   if (/РС\s*1811|ревиз/i.test(text) && /1811/.test(text)) return 'Ревизская сказка 1811';
