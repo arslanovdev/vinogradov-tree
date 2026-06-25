@@ -82,6 +82,8 @@
     view.s = ns;
   }
   function onDown(e: PointerEvent) {
+    if (e.button !== 0) return;
+    e.preventDefault();
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 1) { drag = true; moved = false; st = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }; }
     else if (pointers.size === 2) { drag = false; startPinch(); }
@@ -200,14 +202,15 @@
 </div>
 
 <style>
-  .vp { position: absolute; inset: 0; cursor: grab; touch-action: none; }
+  .vp { position: absolute; inset: 0; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .vp * { user-select: none; -webkit-user-select: none; -webkit-user-drag: none; }
   .vp:active { cursor: grabbing; }
   .world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
   .band { position: absolute; top: 0; pointer-events: none; border-right: 1px solid rgba(120,96,58,0.06); }
   .band.alt { background: rgba(120,96,58,0.035); }
   .links { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
-  .ruler { position: absolute; top: 0; left: 0; right: 0; height: 0; pointer-events: none; z-index: 15; }
-  .genlbl { position: absolute; top: 13px; transform: translateX(-50%); font: 800 11px/1 Manrope, sans-serif; letter-spacing: 0.14em; color: #bfae8a; white-space: nowrap; transition: opacity 0.25s; }
+  .ruler { position: absolute; top: 0; left: 0; right: 0; height: 0; pointer-events: none; z-index: 15; user-select: none; -webkit-user-select: none; }
+  .genlbl { position: absolute; top: 13px; transform: translateX(-50%); font: 800 11px/1 Manrope, sans-serif; letter-spacing: 0.14em; color: #bfae8a; white-space: nowrap; transition: opacity 0.25s; user-select: none; -webkit-user-select: none; }
   .genword { font: 700 8px/1 Manrope, sans-serif; letter-spacing: 0.12em; color: #cabd9f; }
   .cardwrap { position: absolute; }
   .card { width: 100%; text-align: left; font-family: inherit; cursor: pointer; background: #fffdf9; border: 1px solid #ece5da; border-left: 5px solid var(--accent); border-radius: 18px; padding: 12px 14px; display: flex; gap: 11px; align-items: center; box-shadow: 0 6px 18px rgba(70,55,40,0.07); transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease; animation: cardIn 0.55s cubic-bezier(0.2,0.7,0.2,1) both; animation-delay: var(--delay); }

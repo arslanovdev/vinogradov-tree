@@ -62,15 +62,27 @@ export function isRetroSurn(p: Indi): boolean {
 
 export interface NameParts { main: string; sub: string; mono: string; retroSurn: string; }
 
+function initialsFromText(text: string, max = 2): string {
+  const words = text
+    .replace(/\([^)]*\)/g, ' ')
+    .match(/\p{L}+/gu) || [];
+  return (words.slice(0, max).map((w) => w[0]).join('') || '?').toUpperCase();
+}
+
+function personInitials(surn: string, givn: string, fallback: string): string {
+  if (!surn) return initialsFromText(fallback);
+  const mono = (initialsFromText(surn, 1) + initialsFromText(givn, 1)).replace(/\?/g, '');
+  return mono || initialsFromText(fallback, 1);
+}
+
 export function nameParts(p: Indi): NameParts {
   const surn = p.surn || '', givn = p.givn || '';
   if (isRetroSurn(p)) {
     const main = givn || (p.name ? p.name.replace(/\//g, '').trim() : 'Неизвестно');
-    const w = main.split(/\s+/);
-    return { main, sub: '', mono: ((w[0] || '?')[0] + (w[1] ? w[1][0] : '')).toUpperCase(), retroSurn: surn };
+    return { main, sub: '', mono: initialsFromText(main), retroSurn: surn };
   }
   const m = surn || givn || 'Неизвестно';
-  return { main: m, sub: surn ? givn : '', mono: ((surn ? surn[0] : '') + (givn ? givn[0] : '') || m[0] || '?').toUpperCase(), retroSurn: '' };
+  return { main: m, sub: surn ? givn : '', mono: personInitials(surn, givn, m), retroSurn: '' };
 }
 
 export function yr(d?: string): string | null {

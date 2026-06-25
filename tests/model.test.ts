@@ -40,6 +40,37 @@ describe('derive', () => {
     expect(np.main).toBe('Иван Моисеев');
     expect(np.retroSurn).toBe('Камышлов');
   });
+  it('does not use parentheses in fallback avatars', () => {
+    const np = nameParts({
+      id: '@TEST@',
+      givn: 'Учка (Учай / Учан)',
+      surn: 'Сидоров',
+      notes: [],
+      sources: [],
+      todo: [],
+      fams: [],
+      famc: null,
+      media: [],
+      documents: [],
+    });
+    expect(np.mono).toBe('СУ');
+    expect(np.mono).not.toContain('(');
+  });
+  it('ignores parenthetical aliases in retro-name avatars', () => {
+    const np = nameParts({
+      id: '@TEST_RETRO@',
+      givn: 'Учка (Учай / Учан)',
+      surn: 'Сидоров',
+      notes: ['[ФАМИЛИЯ РЕТРО]'],
+      sources: [],
+      todo: [],
+      fams: [],
+      famc: null,
+      media: [],
+      documents: [],
+    });
+    expect(np.mono).toBe('У');
+  });
   it('reads confidence from [ТОЧНОСТЬ]/RELI/QUAY', () => {
     expect(confOf(tree.indi['@I1@']).letter).toBe('A');
   });
