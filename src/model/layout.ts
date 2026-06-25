@@ -69,9 +69,11 @@ export function buildLayout(tree: Tree, showSiblings = true): Layout {
         if (c === bb || !indi[c] || nodeById[c]) return;
         const occ = colOcc[gen] = colOcc[gen] || [];
         let slot: number | null = null;
-        for (let k = 1; k < 80 && slot === null; k++)
-          for (const cand of [base + k, base - k])
-            if (!occ.some((o) => Math.abs(o - cand) < 0.92)) { slot = cand; break; }
+        for (let k = 1; k < 80 && slot === null; k++) {
+          const delta = k * 0.75;
+          for (const cand of [base - delta, base + delta])
+            if (!occ.some((o) => Math.abs(o - cand) < 0.74)) { slot = cand; break; }
+        }
         if (slot === null) slot = base + occ.length + 1;
         occ.push(slot);
         nodeById[c] = { id: c, gen, slot, x: 0, y: 0, isSibling: true };

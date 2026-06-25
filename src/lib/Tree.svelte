@@ -173,7 +173,7 @@
     {/each}
     <svg width={layout.WW} height={layout.WH} class="links">
       {#each layout.links as l, i (i)}
-        <path d={l.d} style="stroke:{ACCENT.line};stroke-opacity:{l.sib ? 0.5 : 0.9};stroke-width:{l.sib ? 1.2 : 1.8};stroke-linecap:round;fill:none;stroke-dasharray:{l.sib ? '3.5,7' : '4000'};stroke-dashoffset:{drawn ? 0 : 4000};transition:stroke-dashoffset 1.1s ease;transition-delay:{(l.gen * 0.09 + 0.5)}s" />
+        <path d={l.d} style="stroke:{ACCENT.line};stroke-opacity:{l.sib ? 0.68 : 0.9};stroke-width:{l.sib ? 1.45 : 1.8};stroke-linecap:round;fill:none;stroke-dasharray:4000;stroke-dashoffset:{drawn ? 0 : 4000};transition:stroke-dashoffset 1.1s ease;transition-delay:{(l.gen * 0.09 + 0.5)}s" />
       {/each}
     </svg>
     {#each cards as c (c.id)}
