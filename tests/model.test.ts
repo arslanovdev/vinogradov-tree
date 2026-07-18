@@ -18,6 +18,10 @@ describe('parse', () => {
   it('has no structural errors', () => {
     expect(validate(tree).filter((i) => i.level === 'error')).toHaveLength(0);
   });
+  it('separates the Belov document evidence from family reports', () => {
+    expect(tree.fam['@F10@'].notes.join(' ')).toContain('Карточка Николая подтверждает только его мать');
+    expect(tree.indi['@I39@'].notes.join(' ')).toContain('со слов семьи');
+  });
 });
 
 describe('layout', () => {
