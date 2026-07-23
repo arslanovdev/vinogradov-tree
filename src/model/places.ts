@@ -40,17 +40,29 @@ export function shortPlace(s: string): string {
   return s.split(',')[0].replace(/^(с|д|г|пос|дер|село|гор)\.?\s+/i, '').trim();
 }
 
-const indiEvents = (tree: Tree, id: string): GEvent[] => {
-  const p = tree.indi[id];
-  return [p.birt, p.deat, p.buri, p.resi].filter((e): e is GEvent => !!e);
-};
+interface IndiEvent {
+  event: GEvent;
+  label: string;
+  kind?: PlaceKind;
+}
 
-function eventLabel(p: ReturnType<typeof indiEvents>[number], slot: number): string {
-  if (slot === 0) return 'Рождение';
-  if (slot === 1) return p.type || 'Смерть';
-  if (slot === 2) return 'Захоронение';
-  if (slot === 3) return 'Жительство';
-  return p.type || 'Событие';
+const WAR_EVENT = /бой|боев|служб|ранен|плен|освобожд.*плен|мобилизац|переправ/i;
+
+const indiEvents = (tree: Tree, id: string): IndiEvent[] => {
+  const p = tree.indi[id];
+  const events: IndiEvent[] = [];
+  if (p.birt) events.push({ event: p.birt, label: 'Рождение' });
+  if (p.deat) events.push({ event: p.deat, label: p.deat.type || 'Смерть' });
+  if (p.buri) events.push({ event: p.buri, label: 'Захоронение' });
+  if (p.resi) events.push({ event: p.resi, label: 'Жительство' });
+  for (const event of p.events) {
+    events.push({
+      event,
+      label: event.type || 'Событие',
+      kind: WAR_EVENT.test(event.type || '') ? 'war' : undefined,
+    });
+  }
+  return events;
 }
 
 function placeText(p: MapPlace): string {
@@ -134,16 +146,16 @@ export function mapPlaces(tree: Tree): MapPlace[] {
   for (const id of Object.keys(tree.indi)) {
     const seen = new Set<string>();
     const personName = (() => { const np = nameParts(tree.indi[id]); return [np.main, np.sub].filter(Boolean).join(' '); })();
-    for (const [slot, e] of indiEvents(tree, id).entries()) {
+    for (const { event: e, label, kind } of indiEvents(tree, id)) {
       if (e.lat == null || e.lon == null) continue;
       const key = e.lat.toFixed(3) + ',' + e.lon.toFixed(3);
       if (!by[key]) {
-        by[key] = { key, lat: e.lat, lon: e.lon, name: shortPlace(e.plac || ''), fullNames: [], kind: kindOf(e.plac || ''), people: [], events: [], counts: {} };
+        by[key] = { key, lat: e.lat, lon: e.lon, name: shortPlace(e.plac || ''), fullNames: [], kind: kind || kindOf(e.plac || ''), people: [], events: [], counts: {} };
       } else if ((e.plac || '').length && by[key].name.length < 3) {
         by[key].name = shortPlace(e.plac || '');
       }
+      if (kind === 'war') by[key].kind = 'war';
       if (e.plac && !by[key].fullNames.includes(e.plac)) by[key].fullNames.push(e.plac);
-      const label = eventLabel(e, slot);
       by[key].counts[label] = (by[key].counts[label] || 0) + 1;
       by[key].events.push({ personId: id, person: personName, label, date: fmtDate(e.date) });
       if (!seen.has(key)) { seen.add(key); by[key].people.push(id); }
@@ -157,7 +169,7 @@ export function placesMissingCoords(tree: Tree): { name: string; people: number 
   const withCoord = new Set<string>();
   const without: Record<string, Set<string>> = {};
   for (const id of Object.keys(tree.indi)) {
-    for (const e of indiEvents(tree, id)) {
+    for (const { event: e } of indiEvents(tree, id)) {
       if (!e.plac) continue;
       const nm = shortPlace(e.plac);
       if (e.lat != null && e.lon != null) withCoord.add(nm);

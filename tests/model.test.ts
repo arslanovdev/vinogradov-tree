@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { parseGedcom, validate } from '../src/gedcom/parse';
 import { buildLayout } from '../src/model/layout';
 import { relAnc, nameParts, confOf, linkifySource, fmtDate } from '../src/model/derive';
-import { mapPlaces } from '../src/model/places';
+import { mapPlaces, placesMissingCoords } from '../src/model/places';
+import { buildDetail } from '../src/model/detail';
 
 const ged = readFileSync(fileURLToPath(new URL('../public/fedorovka_family.ged', import.meta.url)), 'utf-8');
 const tree = parseGedcom(ged);
@@ -17,6 +18,33 @@ describe('parse', () => {
   });
   it('has no structural errors', () => {
     expect(validate(tree).filter((i) => i.level === 'error')).toHaveLength(0);
+  });
+  it('reads multiple GEDCOM events with map coordinates', () => {
+    const parsed = parseGedcom([
+      '0 @T1@ INDI',
+      '1 NAME Тестов Тест',
+      '1 EVEN',
+      '2 TYPE Боевой эпизод',
+      '2 DATE 17 JUL 1943',
+      '2 PLAC с. Русское, Ростовская обл.',
+      '3 MAP',
+      '4 LATI N47.743889',
+      '4 LONG E38.941389',
+      '1 EVEN',
+      '2 TYPE Ранение',
+      '2 DATE 23 FEB 1944',
+    ].join('\n'));
+
+    expect(parsed.indi['@T1@'].events).toEqual([
+      {
+        type: 'Боевой эпизод',
+        date: '17 JUL 1943',
+        plac: 'с. Русское, Ростовская обл.',
+        lat: 47.743889,
+        lon: 38.941389,
+      },
+      { type: 'Ранение', date: '23 FEB 1944' },
+    ]);
   });
 });
 
@@ -45,6 +73,7 @@ describe('derive', () => {
       todo: [],
       fams: [],
       famc: null,
+      events: [],
       media: [],
       documents: [],
     });
@@ -61,6 +90,7 @@ describe('derive', () => {
       todo: [],
       fams: [],
       famc: null,
+      events: [],
       media: [],
       documents: [],
     });
@@ -88,6 +118,67 @@ describe('map coordinates', () => {
     const places = mapPlaces(tree);
     expect(places.length).toBeGreaterThan(3);
     expect(places.every((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon) && p.people.length > 0)).toBe(true);
+  });
+  it('maps a located military event as a war place', () => {
+    const parsed = parseGedcom([
+      '0 @I1@ INDI',
+      '1 NAME Камышлов Тимофей Романович',
+      '1 EVEN',
+      '2 TYPE Бой на Миус-фронте',
+      '2 DATE 17 JUL 1943',
+      '2 PLAC с. Русское, Куйбышевский р-н, Ростовская обл.',
+      '3 MAP',
+      '4 LATI N47.743889',
+      '4 LONG E38.941389',
+    ].join('\n'));
+    const ruskoe = mapPlaces(parsed).find((p) => p.name === 'Русское');
+    expect(ruskoe?.kind).toBe('war');
+    expect(ruskoe?.events).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        personId: '@I1@',
+        label: 'Бой на Миус-фронте',
+        date: '17 июля 1943',
+      }),
+    ]));
+  });
+  it('reports an event place that has no coordinates', () => {
+    const parsed = parseGedcom([
+      '0 @I1@ INDI',
+      '1 NAME Тестов Тест',
+      '1 EVEN',
+      '2 TYPE Ранение',
+      '2 PLAC Неустановленный госпиталь',
+    ].join('\n'));
+
+    expect(placesMissingCoords(parsed)).toEqual([
+      { name: 'Неустановленный госпиталь', people: 1 },
+    ]);
+  });
+});
+
+describe('person details', () => {
+  it('shows meaningful GEDCOM events and omits empty ones', () => {
+    const parsed = parseGedcom([
+      '0 @I1@ INDI',
+      '1 NAME Камышлов Тимофей Романович',
+      '2 SURN Камышлов',
+      '2 GIVN Тимофей Романович',
+      '1 EVEN',
+      '2 TYPE Бой на Миус-фронте',
+      '2 DATE 17 JUL 1943',
+      '2 PLAC с. Русское, Куйбышевский р-н, Ростовская обл.',
+      '1 EVEN',
+      '2 TYPE Пустое событие',
+    ].join('\n'));
+
+    const detail = buildDetail(parsed, '@I1@', buildLayout(parsed));
+    expect(detail?.facts).toEqual(expect.arrayContaining([
+      {
+        label: 'Бой на Миус-фронте',
+        value: '17 июля 1943  ·  с. Русское, Куйбышевский р-н, Ростовская обл.',
+      },
+    ]));
+    expect(detail?.facts.some((fact) => fact.label === 'Пустое событие')).toBe(false);
   });
 });
 

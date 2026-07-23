@@ -36,7 +36,7 @@ export function parseGedcom(text: string): Tree {
     if (level === 0) {
       sub = null;
       if (tag === 'INDI' && xref) {
-        cur = indi[xref] = { id: xref, notes: [], sources: [], todo: [], fams: [], famc: null, media: [], documents: [] };
+        cur = indi[xref] = { id: xref, notes: [], sources: [], todo: [], fams: [], famc: null, events: [], media: [], documents: [] };
         curType = 'I';
       } else if (tag === 'FAM' && xref) {
         cur = fam[xref] = { id: xref, chil: [], notes: [] };
@@ -64,6 +64,12 @@ export function parseGedcom(text: string): Tree {
           case 'DEAT': p.deat = {}; sub = p.deat; break;
           case 'BURI': p.buri = {}; sub = p.buri; break;
           case 'RESI': p.resi = {}; sub = p.resi; break;
+          case 'EVEN': {
+            const event: GEvent = {};
+            p.events.push(event);
+            sub = event;
+            break;
+          }
           case 'OBJE': { const o: GEvent = {}; p.media.push(o); sub = o; break; }
         }
       } else {

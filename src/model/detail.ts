@@ -132,6 +132,10 @@ export function buildDetail(tree: Tree, id: string, layout: Layout): Detail | nu
   if (p.occu) facts.push({ label: 'Служба / занятие', value: p.occu });
   if (p.reli) facts.push({ label: 'Вероисповедание', value: p.reli });
   if (p.resi?.plac && (!p.birt || p.resi.plac !== p.birt.plac)) facts.push({ label: 'Место жительства', value: p.resi.plac });
+  for (const event of p.events) {
+    const value = [fmtDate(event.date), event.plac].filter(Boolean).join('  ·  ');
+    if (value) facts.push({ label: event.type || 'Событие', value });
+  }
 
   const chip = (rid: string): Chip => ({ id: rid, name: displayName(indi[rid], rid) });
   const fc = p.famc ? fam[p.famc] : null;
