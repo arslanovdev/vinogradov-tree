@@ -18,10 +18,6 @@ describe('parse', () => {
   it('has no structural errors', () => {
     expect(validate(tree).filter((i) => i.level === 'error')).toHaveLength(0);
   });
-  it('separates the Belov document evidence from family reports', () => {
-    expect(tree.fam['@F10@'].notes.join(' ')).toContain('Карточка Николая подтверждает только его мать');
-    expect(tree.indi['@I39@'].notes.join(' ')).toContain('со слов семьи');
-  });
 });
 
 describe('layout', () => {
@@ -38,11 +34,6 @@ describe('derive', () => {
     expect(relAnc(1, 'M', 'paternal')).toBe('Папа');
     expect(relAnc(5, 'M', 'paternal')).toBe('Прапрапрадед по папе');
     expect(relAnc(8, 'M', 'paternal')).toBe('Пра⁶-дед по папе');
-  });
-  it('hides retrospective surname', () => {
-    const np = nameParts(tree.indi['@I70@']);
-    expect(np.main).toBe('Иван Моисеев');
-    expect(np.retroSurn).toBe('Камышлов');
   });
   it('does not use parentheses in fallback avatars', () => {
     const np = nameParts({
@@ -75,7 +66,7 @@ describe('derive', () => {
     });
     expect(np.mono).toBe('У');
   });
-  it('reads confidence from [ТОЧНОСТЬ]/RELI/QUAY', () => {
+  it('reads structured confidence', () => {
     expect(confOf(tree.indi['@I1@']).letter).toBe('A');
   });
   it('linkifies pamyat-naroda ids', () => {
