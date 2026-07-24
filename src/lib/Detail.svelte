@@ -2,7 +2,7 @@
   import type { Tree } from '../gedcom/types';
   import type { Layout } from '../model/layout';
   import { buildDetail } from '../model/detail';
-  import { X, Search, Square, FileText, Landmark } from '@lucide/svelte';
+  import { X, Search, Square, FileText, Landmark, MapPin } from '@lucide/svelte';
 
   let { tree, layout, id, mobile = false, onclose, ongoto }:
     { tree: Tree; layout: Layout; id: string; mobile?: boolean; onclose: () => void; ongoto: (id: string) => void } = $props();
@@ -60,9 +60,41 @@
       <span class="pill grey" title={d.methodology ?? d.conf.label}><span class="cbadge">{d.conf.letter}</span>{d.conf.label}</span>
     </div>
 
-    {#each d.facts as f}
-      <div class="fact"><div class="flabel">{f.label}</div><div class="fval">{f.value}</div></div>
-    {/each}
+    {#if d.facts.length}
+      <section class="profilefacts">
+        <div class="sech">Основные сведения</div>
+        <div class="factgrid">
+          {#each d.facts as f}
+            <div class="fact">
+              <div class="flabel">{f.label}</div>
+              <div class="fval">{f.value}</div>
+            </div>
+          {/each}
+        </div>
+      </section>
+    {/if}
+
+    {#if d.timeline.length}
+      <section class="journey">
+        <div class="sech">Жизненный путь</div>
+        <div class="timeline">
+          {#each d.timeline as event}
+            <div class="event" class:military={event.kind === 'military'}>
+              <div class="rail"><span></span></div>
+              <div class="eventbody">
+                <div class="eventtop">
+                  <div class="eventlabel">{event.label}</div>
+                  {#if event.date}<time>{event.date}</time>{/if}
+                </div>
+                {#if event.place}
+                  <div class="eventplace"><MapPin size={13} strokeWidth={1.9} /><span>{event.place}</span></div>
+                {/if}
+              </div>
+            </div>
+          {/each}
+        </div>
+      </section>
+    {/if}
 
     {#each d.notes as t}<div class="note">{t}</div>{/each}
 
@@ -146,12 +178,12 @@
 {/if}
 
 <style>
-  .backdrop { position: absolute; inset: 0; padding: 0; border: none; background: rgba(45,38,30,0.26); backdrop-filter: blur(2px); z-index: 55; animation: bin 0.3s ease both; cursor: pointer; }
-  .drawer { position: absolute; top: 0; right: 0; height: 100%; width: 442px; max-width: 94vw; box-sizing: border-box; background: #fffdf9; border-left: 1px solid #ece5da; box-shadow: -20px 0 50px rgba(60,48,34,0.14); padding: 26px; overflow-y: auto; overflow-x: hidden; z-index: 60; animation: din 0.42s cubic-bezier(0.2,0.7,0.2,1) both; font-family: Manrope, sans-serif; }
+  .backdrop { position: fixed; inset: 0; padding: 0; border: none; background: rgba(45,38,30,0.26); backdrop-filter: blur(2px); z-index: 55; animation: bin 0.3s ease both; cursor: pointer; }
+  .drawer { position: fixed; top: 0; right: 0; height: 100%; width: 480px; max-width: 94vw; box-sizing: border-box; background: #fffdf9; border-left: 1px solid #ece5da; box-shadow: -20px 0 50px rgba(60,48,34,0.14); padding: 28px; overflow-y: auto; overflow-x: hidden; z-index: 60; animation: din 0.42s cubic-bezier(0.2,0.7,0.2,1) both; font-family: Manrope, sans-serif; -webkit-font-smoothing: antialiased; }
   .drawer.mobile { top: auto; bottom: 0; right: 0; left: 0; width: 100%; max-width: none; height: 86%; border-left: none; border-top: 1px solid #ece5da; border-radius: 24px 24px 0 0; box-shadow: 0 -16px 50px rgba(60,48,34,0.2); padding: 8px 18px 20px; animation: sin 0.42s cubic-bezier(0.2,0.7,0.2,1) both; }
   .grab { display: flex; justify-content: center; width: 100%; padding: 4px 0 12px; cursor: pointer; border: none; background: transparent; }
   .grab span { width: 42px; height: 5px; border-radius: 3px; background: #ddd3c4; }
-  .close { position: absolute; right: 18px; top: 18px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid #ece5da; background: #fff; font-size: 17px; color: #8d8478; cursor: pointer; line-height: 1; }
+  .close { position: absolute; right: 18px; top: 18px; width: 40px; height: 40px; border-radius: 50%; border: 1px solid #ece5da; background: #fff; font-size: 17px; color: #8d8478; cursor: pointer; line-height: 1; }
   .close:hover { background: #f6f1e8; color: #5b5347; }
   .head { display: flex; gap: 16px; align-items: center; padding-right: 30px; }
   .ava { width: 64px; height: 64px; border-radius: 50%; flex: none; }
@@ -174,7 +206,7 @@
   .lclose { position: absolute; top: max(16px, env(safe-area-inset-top)); right: 16px; width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .lclose:hover { background: rgba(255,255,255,0.22); }
   .rel { font-size: 9.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
-  .name { font-family: Spectral, serif; font-size: 23px; font-weight: 600; color: #2f2a22; line-height: 1.1; margin-top: 2px; }
+  .name { font-family: Spectral, serif; font-size: 24px; font-weight: 600; color: #2f2a22; line-height: 1.08; margin-top: 2px; text-wrap: balance; }
   .givn { font-size: 14px; color: #6a6358; }
   .pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
   .pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 5px 11px; font-size: 11.5px; font-weight: 600; }
@@ -182,10 +214,27 @@
   .pill.grey { background: #f3eee5; color: #6a6358; }
   .nums { font-variant-numeric: tabular-nums; }
   .cbadge { display: inline-flex; align-items: center; justify-content: center; width: 19px; height: 19px; border-radius: 7px; background: #fff; color: var(--conf); font-size: 10px; font-weight: 800; }
-  .fact { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #efe9df; }
-  .flabel { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: #a59a8c; min-width: 118px; padding-top: 2px; flex: none; }
-  .fval { font-size: 13.5px; color: #3c362e; line-height: 1.45; }
-  .note { font-size: 13.5px; color: #4a443b; line-height: 1.6; margin-top: 13px; }
+  .profilefacts { margin-top: 20px; }
+  .factgrid { display: grid; gap: 8px; }
+  .fact { min-width: 0; padding: 12px 14px; border: 1px solid #eee6d9; border-radius: 12px; background: #fbf8f2; box-shadow: 0 2px 8px rgba(70,55,40,0.035); }
+  .flabel { margin-bottom: 5px; font-size: 9.5px; font-weight: 750; letter-spacing: 0.09em; text-transform: uppercase; color: #a09585; }
+  .fval { font-size: 13.5px; color: #3c362e; line-height: 1.5; overflow-wrap: anywhere; text-wrap: pretty; }
+  .journey { margin-top: 20px; }
+  .timeline { --rail: #dfd5c5; }
+  .event { display: grid; grid-template-columns: 18px minmax(0, 1fr); column-gap: 10px; min-height: 58px; }
+  .rail { position: relative; display: flex; justify-content: center; }
+  .rail::after { content: ''; position: absolute; top: 15px; bottom: -1px; width: 1px; background: var(--rail); }
+  .event:last-child .rail::after { display: none; }
+  .rail span { position: relative; z-index: 1; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: #fffdf9; border: 2px solid #b9ad9b; box-shadow: 0 0 0 3px #fffdf9; }
+  .event.military .rail span { border-color: var(--accent); background: var(--soft); }
+  .eventbody { min-width: 0; padding: 0 0 16px; }
+  .eventtop { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .eventlabel { min-width: 0; font-size: 13px; font-weight: 750; line-height: 1.35; color: #3c362e; text-wrap: pretty; }
+  .event.military .eventlabel { color: var(--accent); }
+  .event time { flex: none; font-size: 11px; font-weight: 650; color: #8d8478; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .eventplace { display: flex; align-items: flex-start; gap: 6px; margin-top: 5px; color: #766d61; font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+  .eventplace :global(svg) { flex: none; margin-top: 2px; color: #ab9e8b; }
+  .note { font-size: 13.5px; color: #4a443b; line-height: 1.65; margin-top: 15px; text-wrap: pretty; }
   .box { margin-top: 14px; border-radius: 13px; padding: 12px 14px; }
   .todo { background: #f4f7f3; border: 1px solid #dfe9df; }
   .boxh { font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #a59a8c; margin-bottom: 5px; }
@@ -213,6 +262,12 @@
   .chips { display: flex; flex-wrap: wrap; gap: 7px; }
   .chip { background: var(--soft); color: var(--accent); border: none; border-radius: 999px; padding: 7px 13px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
   .chip:hover { filter: brightness(0.96); transform: translateY(-1px); }
+  @media (max-width: 640px) {
+    .profilefacts, .journey { margin-top: 18px; }
+    .eventtop { display: block; }
+    .event time { display: block; margin-top: 3px; }
+    .fact { padding: 11px 12px; }
+  }
   @keyframes bin { from { opacity: 0; } to { opacity: 1; } }
   @keyframes din { from { transform: translateX(46px); opacity: 0; } to { transform: none; opacity: 1; } }
   @keyframes sin { from { transform: translateY(60px); opacity: 0; } to { transform: none; opacity: 1; } }

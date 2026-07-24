@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { parseGedcom, validate } from '../src/gedcom/parse';
 import { buildLayout } from '../src/model/layout';
 import { relAnc, nameParts, confOf, linkifySource, fmtDate } from '../src/model/derive';
-import { mapPlaces, placesMissingCoords } from '../src/model/places';
+import { filterMapPlaces, mapArrows, mapPlaces, placesMissingCoords } from '../src/model/places';
 import { buildDetail } from '../src/model/detail';
 
 const ged = readFileSync(fileURLToPath(new URL('../public/fedorovka_family.ged', import.meta.url)), 'utf-8');
@@ -154,6 +154,16 @@ describe('map coordinates', () => {
       { name: 'Неустановленный госпиталь', people: 1 },
     ]);
   });
+  it('does not silently omit named places from the real family map', () => {
+    expect(placesMissingCoords(tree)).toEqual([]);
+  });
+  it('filters the atlas into family and military stories', () => {
+    const places = mapPlaces(tree);
+    expect(filterMapPlaces(places, 'all')).toHaveLength(places.length);
+    expect(filterMapPlaces(places, 'family').every((place) => place.kind !== 'war')).toBe(true);
+    expect(filterMapPlaces(places, 'war').every((place) => place.kind === 'war')).toBe(true);
+    expect(mapArrows(places).filter((arrow) => arrow.kind === 'war')).toHaveLength(2);
+  });
 });
 
 describe('person details', () => {
@@ -172,13 +182,15 @@ describe('person details', () => {
     ].join('\n'));
 
     const detail = buildDetail(parsed, '@I1@', buildLayout(parsed));
-    expect(detail?.facts).toEqual(expect.arrayContaining([
+    expect(detail?.timeline).toEqual(expect.arrayContaining([
       {
         label: 'Бой на Миус-фронте',
-        value: '17 июля 1943  ·  с. Русское, Куйбышевский р-н, Ростовская обл.',
+        date: '17 июля 1943',
+        place: 'с. Русское, Куйбышевский р-н, Ростовская обл.',
+        kind: 'military',
       },
     ]));
-    expect(detail?.facts.some((fact) => fact.label === 'Пустое событие')).toBe(false);
+    expect(detail?.timeline.some((event) => event.label === 'Пустое событие')).toBe(false);
   });
 });
 

@@ -2,6 +2,7 @@ import type { Tree, GEvent } from '../gedcom/types';
 import { fmtDate, nameParts } from './derive';
 
 export type PlaceKind = 'home' | 'home2' | 'origin' | 'war' | 'other';
+export type MapFilter = 'all' | 'family' | 'war';
 
 export interface MapPlace {
   key: string;
@@ -24,6 +25,12 @@ export interface PlaceEvent {
 
 export const placeColor = (k: PlaceKind) =>
   ({ home: '#b1944c', home2: '#84a096', origin: '#b0876a', war: '#a4553f', other: '#9a9183' }[k]);
+
+export function filterMapPlaces(places: MapPlace[], filter: MapFilter): MapPlace[] {
+  if (filter === 'all') return places;
+  if (filter === 'war') return places.filter((place) => place.kind === 'war');
+  return places.filter((place) => place.kind !== 'war');
+}
 
 function kindOf(s: string): PlaceKind {
   if (/Городок|Сыч[её]в|Нетертовка/i.test(s)) return 'war';
@@ -193,7 +200,7 @@ const ARROW_DEFS: { from: RegExp; to: RegExp; kind: 'mig' | 'war' }[] = [
 ];
 
 export function mapArrows(places: MapPlace[]): { from: MapPlace; to: MapPlace; kind: 'mig' | 'war' }[] {
-  const find = (re: RegExp) => places.find((p) => re.test(p.name));
+  const find = (re: RegExp) => places.find((p) => re.test([p.name, ...p.fullNames].join(' ')));
   const out: { from: MapPlace; to: MapPlace; kind: 'mig' | 'war' }[] = [];
   for (const a of ARROW_DEFS) {
     const f = find(a.from), t = find(a.to);

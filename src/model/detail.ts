@@ -4,6 +4,12 @@ import { relAnc, confOf, lifespan, fmtDate, nameParts, linkifySource, colorOf, s
 
 export interface Chip { id: string; name: string; }
 export interface Fact { label: string; value: string; }
+export interface TimelineEntry {
+  label: string;
+  date: string | null;
+  place: string | null;
+  kind: 'life' | 'military';
+}
 export interface Archival { date: string | null; body: string; }
 export interface SourceRef { title: string; detail: string | null; repository: string | null; url: string | null; }
 export interface Group { title: string; items: Chip[]; }
@@ -22,6 +28,7 @@ export interface Detail {
   sources: SourceRef[];
   todo: string[];
   facts: Fact[];
+  timeline: TimelineEntry[];
   groups: Group[];
   documents: DocRef[];
 }
@@ -100,6 +107,13 @@ function displayName(p: Indi | undefined, rid: string): string {
   return [np.main, np.sub].filter(Boolean).join(' ') || 'Неизвестно';
 }
 
+const MILITARY_EVENT = /бой|боев|служб|ранен|плен|мобилизац|переправ|фронт|убит|погиб/i;
+
+function timelineYear(date?: string): number {
+  const match = date?.match(/\b(\d{3,4})\b/);
+  return match ? Number(match[1]) : Number.POSITIVE_INFINITY;
+}
+
 export function buildDetail(tree: Tree, id: string, layout: Layout): Detail | null {
   const { indi, fam } = tree;
   const p = indi[id];
@@ -126,16 +140,29 @@ export function buildDetail(tree: Tree, id: string, layout: Layout): Detail | nu
 
   const facts: Fact[] = [];
   if (np.retroSurn) facts.push({ label: 'Фамилия', value: `«${np.retroSurn}» — ретроспективная, по селу; в эту эпоху фамилий ещё не было` });
-  if (p.birt && (p.birt.date || p.birt.plac)) facts.push({ label: 'Рождение', value: [fmtDate(p.birt.date), p.birt.plac].filter(Boolean).join('  ·  ') });
-  if (p.deat && (p.deat.date || p.deat.plac || p.deat.type)) facts.push({ label: 'Смерть', value: [p.deat.type, fmtDate(p.deat.date), p.deat.plac].filter(Boolean).join('  ·  ') });
-  if (p.buri?.plac) facts.push({ label: 'Захоронение', value: p.buri.plac });
   if (p.occu) facts.push({ label: 'Служба / занятие', value: p.occu });
   if (p.reli) facts.push({ label: 'Вероисповедание', value: p.reli });
-  if (p.resi?.plac && (!p.birt || p.resi.plac !== p.birt.plac)) facts.push({ label: 'Место жительства', value: p.resi.plac });
-  for (const event of p.events) {
-    const value = [fmtDate(event.date), event.plac].filter(Boolean).join('  ·  ');
-    if (value) facts.push({ label: event.type || 'Событие', value });
-  }
+
+  const timelineRows: Array<TimelineEntry & { rawDate?: string; order: number }> = [];
+  const addTimeline = (label: string, date?: string, place?: string, forceMilitary = false) => {
+    if (!date && !place) return;
+    timelineRows.push({
+      label,
+      date: fmtDate(date),
+      place: place || null,
+      kind: forceMilitary || MILITARY_EVENT.test(label) ? 'military' : 'life',
+      rawDate: date,
+      order: timelineRows.length,
+    });
+  };
+  if (p.birt) addTimeline('Рождение', p.birt.date, p.birt.plac);
+  if (p.resi && (!p.birt || p.resi.plac !== p.birt.plac)) addTimeline('Место жительства', p.resi.date, p.resi.plac);
+  for (const event of p.events) addTimeline(event.type || 'Событие', event.date, event.plac);
+  if (p.deat) addTimeline(p.deat.type || 'Смерть', p.deat.date, p.deat.plac, MILITARY_EVENT.test(p.deat.type || ''));
+  if (p.buri) addTimeline('Захоронение', p.buri.date, p.buri.plac);
+  const timeline = timelineRows
+    .sort((a, b) => timelineYear(a.rawDate) - timelineYear(b.rawDate) || a.order - b.order)
+    .map(({ label, date, place, kind }) => ({ label, date, place, kind }));
 
   const chip = (rid: string): Chip => ({ id: rid, name: displayName(indi[rid], rid) });
   const fc = p.famc ? fam[p.famc] : null;
@@ -158,7 +185,7 @@ export function buildDetail(tree: Tree, id: string, layout: Layout): Detail | nu
     sideLabel: side === 'paternal' ? 'Линия отца' : side === 'maternal' ? 'Линия матери' : 'Точка отсчёта',
     lifespan: lifespan(p),
     conf: confOf(p),
-    methodology, notes: plain, archival, sources, todo, facts, groups,
+    methodology, notes: plain, archival, sources, todo, facts, timeline, groups,
     documents: p.documents.filter((m) => m.file).map((m) => ({ file: m.file!, title: docLabel(m.file!, m.titl) })),
   };
 }
