@@ -167,6 +167,30 @@ describe('map coordinates', () => {
 });
 
 describe('person details', () => {
+  it('keeps one SOUR with semicolons as one source card', () => {
+    const parsed = parseGedcom([
+      '0 @I1@ INDI',
+      '1 NAME Тестов Тест',
+      '1 SOUR Первый фрагмент; второй фрагмент; третий фрагмент',
+    ].join('\n'));
+
+    const detail = buildDetail(parsed, '@I1@', buildLayout(parsed));
+
+    expect(detail?.sources).toHaveLength(1);
+    expect(detail?.sources[0].title).toBe('Первый фрагмент');
+    expect(detail?.sources[0].detail).toBe('; второй фрагмент; третий фрагмент');
+  });
+
+  it('keeps Bekin scans as documents without listing the Red Book as a source', () => {
+    const egor = buildDetail(tree, '@I17@', buildLayout(tree));
+
+    expect(egor?.sources.some((source) => /красн.*книг|бекин/i.test(`${source.title} ${source.detail ?? ''}`))).toBe(false);
+    expect(egor?.documents.map((document) => document.file)).toEqual(expect.arrayContaining([
+      'photos/bekin_late_arrivals_list_p263.jpg',
+      'photos/bekin_belov_family_p268.jpg',
+    ]));
+  });
+
   it('shows meaningful GEDCOM events and omits empty ones', () => {
     const parsed = parseGedcom([
       '0 @I1@ INDI',

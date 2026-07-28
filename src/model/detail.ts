@@ -133,10 +133,10 @@ export function buildDetail(tree: Tree, id: string, layout: Layout): Detail | nu
   notes.forEach((n) => { const m = n.match(/^\s*\[(?:ИСКАТЬ|ЛИДЫ|TODO)\]\s*([\s\S]*)$/i); if (m && m[1].trim()) todo.push(m[1].trim()); });
 
   const sources: SourceRef[] = [];
-  p.sources.forEach((s) => s.split(/\s*;\s*/).forEach((t) => {
-    const v = t.trim();
+  p.sources.forEach((s) => {
+    const v = s.trim();
     if (v) sources.push(formatSource(v));
-  }));
+  });
 
   const facts: Fact[] = [];
   if (np.retroSurn) facts.push({ label: 'Фамилия', value: `«${np.retroSurn}» — ретроспективная, по селу; в эту эпоху фамилий ещё не было` });
