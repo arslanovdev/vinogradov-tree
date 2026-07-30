@@ -57,28 +57,23 @@ export function buildLayout(tree: Tree, showSiblings = true): Layout {
   Object.keys(rel).forEach((id) => (sideById[id] = rel[id].side));
   sideById['@I1@'] = 'self';
   const siblingIds = new Set<string>();
+  const desiredSlot = new Map<string, number>();
+  Object.values(nodeById).forEach((node) => desiredSlot.set(node.id, node.slot));
 
   if (showSiblings) {
-    const colOcc: Record<number, number[]> = {};
-    Object.values(nodeById).forEach((n) => { (colOcc[n.gen] = colOcc[n.gen] || []).push(n.slot); });
-    Object.values(fam).forEach((f) => {
-      const bb = f.chil.find((c) => nodeById[c]); if (!bb) return;
-      const fsSide = (rel[bb] && rel[bb].side) || sideById[bb] || 'self';
-      const gen = nodeById[bb].gen, base = nodeById[bb].slot;
-      f.chil.forEach((c) => {
-        if (c === bb || !indi[c] || nodeById[c]) return;
-        const occ = colOcc[gen] = colOcc[gen] || [];
-        let slot: number | null = null;
-        for (let k = 1; k < 80 && slot === null; k++) {
-          const delta = k * 0.75;
-          for (const cand of [base - delta, base + delta])
-            if (!occ.some((o) => Math.abs(o - cand) < 0.74)) { slot = cand; break; }
-        }
-        if (slot === null) slot = base + occ.length + 1;
-        occ.push(slot);
-        nodeById[c] = { id: c, gen, slot, x: 0, y: 0, isSibling: true };
-        siblingIds.add(c);
-        sideById[c] = fsSide;
+    Object.values(fam).forEach((family) => {
+      const directChild = family.chil.find((id) => nodeById[id]); if (!directChild) return;
+      const anchor = nodeById[directChild];
+      const side = sideById[directChild] || 'self';
+      let ordinal = 0;
+      family.chil.forEach((id) => {
+        if (id === directChild || !indi[id] || nodeById[id]) return;
+        ordinal += 1;
+        const slot = anchor.slot + ordinal * 0.75;
+        nodeById[id] = { id, gen: anchor.gen, slot, x: 0, y: 0, isSibling: true };
+        desiredSlot.set(id, slot);
+        siblingIds.add(id);
+        sideById[id] = side;
       });
     });
   }
@@ -86,6 +81,34 @@ export function buildLayout(tree: Tree, showSiblings = true): Layout {
     const s = (f.husb && sideById[f.husb]) || (f.wife && sideById[f.wife]) || null;
     if (s) { if (f.husb && !sideById[f.husb]) sideById[f.husb] = s; if (f.wife && !sideById[f.wife]) sideById[f.wife] = s; }
   });
+
+  const bySideAndGeneration = new Map<string, PlacedNode[]>();
+  Object.values(nodeById).forEach((node) => {
+    const side = sideById[node.id] || 'self';
+    if (side === 'self') return;
+    const key = `${side}:${node.gen}`;
+    const group = bySideAndGeneration.get(key) || [];
+    group.push(node);
+    bySideAndGeneration.set(key, group);
+  });
+  bySideAndGeneration.forEach((group) => {
+    group.sort((a, b) => (desiredSlot.get(a.id)! - desiredSlot.get(b.id)!) || Number(!!a.isSibling) - Number(!!b.isSibling));
+    let previous = Number.NEGATIVE_INFINITY;
+    group.forEach((node) => {
+      node.slot = Math.max(desiredSlot.get(node.id)!, previous + 0.78);
+      previous = node.slot;
+    });
+  });
+
+  const paternal = Object.values(nodeById).filter((node) => sideById[node.id] === 'paternal');
+  const maternal = Object.values(nodeById).filter((node) => sideById[node.id] === 'maternal');
+  if (paternal.length && maternal.length) {
+    const paternalMax = Math.max(...paternal.map((node) => node.slot));
+    const maternalMin = Math.min(...maternal.map((node) => node.slot));
+    const shift = paternalMax + 1.2 - maternalMin;
+    maternal.forEach((node) => { node.slot += shift; });
+    nodeById['@I1@'].slot = (Math.min(...paternal.map((node) => node.slot)) + Math.max(...maternal.map((node) => node.slot))) / 2;
+  }
 
   const slots = Object.values(nodeById).map((n) => n.slot);
   const minS = Math.min(...slots), maxS = Math.max(...slots);

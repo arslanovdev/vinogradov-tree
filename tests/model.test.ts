@@ -49,11 +49,27 @@ describe('parse', () => {
 });
 
 describe('layout', () => {
+  function sideSlots(layout: ReturnType<typeof buildLayout>, side: 'paternal' | 'maternal') {
+    return Object.values(layout.nodeById)
+      .filter((node) => layout.sideById[node.id] === side)
+      .map((node) => node.slot);
+  }
+
   it('builds a multi-generation pedigree', () => {
     const L = buildLayout(tree);
     expect(L.generations).toBeGreaterThanOrEqual(10);
     expect(Object.keys(L.nodeById).length).toBeGreaterThan(60);
     expect(L.sideById['@I1@']).toBe('self');
+  });
+
+  it('keeps added relatives inside their branch in the family GEDCOM', () => {
+    const layout = buildLayout(tree);
+    const paternal = sideSlots(layout, 'paternal');
+    const maternal = sideSlots(layout, 'maternal');
+
+    expect(layout.siblingIds.has('@I86@')).toBe(true);
+    expect(layout.sideById['@I86@']).toBe('maternal');
+    expect(Math.max(...paternal)).toBeLessThan(Math.min(...maternal));
   });
 });
 
