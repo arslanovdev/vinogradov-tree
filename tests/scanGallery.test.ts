@@ -23,6 +23,18 @@ describe('scan gallery model', () => {
     expect(pages.at(-1)?.label).toBe('0188');
   });
 
+  it('supports archives whose scan numbering starts at a non-one page', () => {
+    const pages = buildScanPages(2, 'i294op3d201', 190, 'JPG');
+    expect(pages.map((page) => page.label)).toEqual(['0190', '0191']);
+    expect(pages[0]?.url).toBe('i294op3d201/0190.JPG');
+  });
+
+  it('supports archives with wider zero-padded filenames', () => {
+    const pages = buildScanPages(2, 'i294op3d189', 106, 'JPG', 8);
+    expect(pages.map((page) => page.label)).toEqual(['00000106', '00000107']);
+    expect(pages[0]?.url).toBe('i294op3d189/00000106.JPG');
+  });
+
   it('filters by page query and parity', () => {
     expect(filterScanPages(pages, '018', 'all').map((page) => page.label)).toEqual([
       '0018', '0180', '0181', '0182', '0183', '0184', '0185', '0186', '0187', '0188',
@@ -46,6 +58,17 @@ describe('scan gallery model', () => {
       y: 0,
       rotation: 0,
     });
+  });
+
+  it('inherits the current focus when the next page has no saved view', () => {
+    const focus: ScanView = { scale: 2.4, x: -130, y: 80, rotation: 270 };
+    expect(restoreScanView(undefined, focus)).toEqual(focus);
+  });
+
+  it('keeps the current focus when the next page has a stale saved view', () => {
+    const focus: ScanView = { scale: 2.4, x: -130, y: 80, rotation: 270 };
+    const staleView: ScanView = { scale: 1, x: 0, y: 0, rotation: 0 };
+    expect(restoreScanView(staleView, focus)).toEqual(focus);
   });
 
   it('rotates a saved view in quarter-turns and wraps around', () => {

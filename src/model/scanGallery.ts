@@ -23,14 +23,20 @@ export type ScanFit = ScanSize & {
   orientedHeight: number;
 };
 
-export function buildScanPages(count: number, folder = 'r473op1d4496'): ScanPage[] {
+export function buildScanPages(
+  count: number,
+  folder = 'r473op1d4496',
+  startNumber = 1,
+  extension = 'jpg',
+  labelWidth = 4,
+): ScanPage[] {
   return Array.from({ length: count }, (_, index) => {
-    const number = index + 1;
-    const label = String(number).padStart(4, '0');
+    const number = startNumber + index;
+    const label = String(number).padStart(labelWidth, '0');
     return {
       number,
       label,
-      url: `${folder}/${label}.jpg`,
+      url: `${folder}/${label}.${extension}`,
       thumbUrl: `${folder}/thumbs/${label}.jpg`,
       orientation: 'portrait',
     };
@@ -51,11 +57,15 @@ export function nextScanIndex(pages: ScanPage[], currentIndex: number, step: num
   return (currentIndex + step + pages.length) % pages.length;
 }
 
-export function restoreScanView(value: Partial<ScanView> | null | undefined): ScanView {
-  const scale = Number(value?.scale);
-  const x = Number(value?.x);
-  const y = Number(value?.y);
-  const rotation = Number(value?.rotation);
+export function restoreScanView(
+  value: Partial<ScanView> | null | undefined,
+  preferred?: Partial<ScanView> | null,
+): ScanView {
+  const source = preferred ?? value;
+  const scale = Number(source?.scale);
+  const x = Number(source?.x);
+  const y = Number(source?.y);
+  const rotation = Number(source?.rotation);
   const normalizedRotation = Number.isFinite(rotation) && rotation % 90 === 0
     ? ((rotation % 360) + 360) % 360
     : 0;

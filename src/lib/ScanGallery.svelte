@@ -5,7 +5,6 @@
     ArrowRight,
     ChevronLeft,
     ChevronRight,
-    Columns3,
     Fullscreen,
     Grid2X2,
     Keyboard,
@@ -32,17 +31,15 @@
 
   let { onclose }: { onclose: () => void } = $props();
 
-  const pages = buildScanPages(188);
-  const storageKey = 'vinogradov-tree.scan-gallery.v1';
+  const pages = buildScanPages(106, 'i294op1d587', 1, 'webp');
+  const storageKey = 'vinogradov-tree.scan-gallery.i294op1d587.v1';
   let query = $state('');
   let parity = $state<ScanParity>('all');
   let currentNumber = $state(1);
   let pageInput = $state('1');
   let view = $state<ScanView>({ scale: 1, x: 0, y: 0, rotation: 0 });
-  let thumbsOpen = $state(true);
   let dragging = $state(false);
   let showShortcuts = $state(false);
-  let failedThumbs = $state(new Set<number>());
   let stage = $state<HTMLElement | null>(null);
   let imageLoaded = $state(false);
   let imageNatural = $state<ScanSize>({ width: 0, height: 0 });
@@ -85,7 +82,7 @@
     currentNumber = page.number;
     imageLoaded = false;
     imageNatural = { width: 0, height: 0 };
-    view = restoreScanView(viewByPage.get(page.number));
+    view = restoreScanView(viewByPage.get(page.number), view);
     persist();
   }
 
@@ -190,10 +187,6 @@
     else if (event.key === 'Escape') { event.preventDefault(); onclose(); }
   }
 
-  function markThumbFailed(page: ScanPage) {
-    failedThumbs = new Set(failedThumbs).add(page.number);
-  }
-
   onMount(() => {
     try {
       const saved = JSON.parse(sessionStorage.getItem(storageKey) ?? 'null') as {
@@ -205,7 +198,7 @@
       if (saved) {
         query = saved.query ?? '';
         parity = saved.parity ?? 'all';
-        currentNumber = pages.some((page) => page.number === saved.currentNumber) ? saved.currentNumber! : 1;
+        currentNumber = pages.some((page) => page.number === saved.currentNumber) ? saved.currentNumber! : pages[0].number;
         viewByPage = new Map(Object.entries(saved.views ?? {}).map(([key, value]) => [Number(key), restoreScanView(value)]));
         view = restoreScanView(viewByPage.get(currentNumber));
       }
@@ -231,7 +224,7 @@
       <button class="icon-btn" onclick={onclose} title="Вернуться к дереву" aria-label="Вернуться к дереву"><ArrowLeft size={19} /></button>
       <div>
         <div class="eyebrow">Временный просмотр архива</div>
-        <h1>Сканы · r473op1d4496</h1>
+      <h1>Сканы · Фёдоровка 1857</h1>
       </div>
     </div>
 
@@ -251,7 +244,6 @@
 
     <div class="top-actions">
       <button class="icon-btn" class:active={showShortcuts} onclick={() => (showShortcuts = !showShortcuts)} title="Шорткаты" aria-label="Шорткаты"><Keyboard size={18} /></button>
-      <button class="icon-btn" class:active={thumbsOpen} onclick={() => (thumbsOpen = !thumbsOpen)} title="Показать миниатюры" aria-label="Показать миниатюры"><Columns3 size={18} /></button>
       <button class="icon-btn" onclick={() => void toggleFullscreen()} title="Полный экран (F)" aria-label="Полный экран"><Fullscreen size={18} /></button>
     </div>
   </header>
@@ -314,22 +306,6 @@
       <button class="reset-btn" onclick={resetView}><RotateCcw size={14} /> Сбросить кадр</button>
     </div>
 
-    {#if thumbsOpen}
-      <section class="thumbs" aria-label="Миниатюры сканов">
-        {#each filtered as page (page.number)}
-          <button class="thumb" class:selected={page.number === currentNumber} onclick={() => selectPage(page)} title={`Лист ${page.label}`} aria-label={`Лист ${page.label}`}>
-            {#if failedThumbs.has(page.number)}
-              <span class="thumb-placeholder">{page.label}</span>
-            {:else}
-              <img src={import.meta.env.BASE_URL + page.thumbUrl} alt="" loading="lazy" onerror={() => markThumbFailed(page)} />
-            {/if}
-            <span>{page.label}</span>
-          </button>
-        {:else}
-          <div class="empty">Ничего не найдено. Очистите фильтр или введите другой номер.</div>
-        {/each}
-      </section>
-    {/if}
   </main>
 
   {#if showShortcuts}
@@ -341,7 +317,7 @@
       <div><kbd>[</kbd><kbd>]</kbd> повернуть лист</div>
       <div><kbd>0</kbd> вписать · <kbd>1</kbd> 200%</div>
       <div><kbd>F</kbd> полный экран · <kbd>Esc</kbd> выйти</div>
-      <div class="popover-note">Зум и позиция кадра запоминаются отдельно для каждого листа.</div>
+    <div class="popover-note">Зум, позиция и поворот сохраняются при перелистывании.</div>
     </aside>
   {/if}
 </div>
@@ -349,10 +325,11 @@
 <style>
   :global(html, body) { margin: 0; height: 100%; overflow: hidden; background: #211f1c; }
   :global(body) { -webkit-font-smoothing: antialiased; }
-  .gallery { position: fixed; inset: 0; display: flex; flex-direction: column; color: #eee9e0; background: #211f1c; font-family: Manrope, system-ui, sans-serif; }
-  .topbar { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 0 24px; background: rgba(34, 31, 27, 0.95); border-bottom: 1px solid rgba(255,255,255,0.08); z-index: 4; }
+  .gallery { position: fixed; inset: 0; color: #eee9e0; background: #211f1c; font-family: Manrope, system-ui, sans-serif; }
+  .topbar { position: absolute; inset: 0 0 auto; min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 0 18px; background: linear-gradient(180deg, rgba(29,27,24,.96), rgba(29,27,24,.7) 70%, transparent); z-index: 4; pointer-events: none; }
+  .topbar > * { pointer-events: auto; }
   .brand, .top-actions, .filter-row { display: flex; align-items: center; gap: 12px; }
-  .brand { min-width: 250px; }
+  .brand { min-width: 200px; }
   .eyebrow { color: #b7a58d; font-size: 9px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
   h1 { margin: 3px 0 0; font: 600 17px/1.1 Spectral, Georgia, serif; color: #f4efe6; }
   button { font: inherit; }
@@ -369,27 +346,27 @@
   .segmented button:hover { color: #f5f0e8; }
   .segmented button.active { color: #2c2925; background: #d9c2a3; }
   .result-count { color: #887d70; font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .viewer { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
-  .stage { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; cursor: grab; background: radial-gradient(ellipse at 50% 44%, #4b443b 0%, #312d28 42%, #211f1c 100%); }
+  .viewer { position: absolute; inset: 0; }
+  .stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; cursor: grab; background: radial-gradient(ellipse at 50% 44%, #4b443b 0%, #312d28 42%, #211f1c 100%); }
   .stage.dragging { cursor: grabbing; }
   .stage::before { position: absolute; inset: 24px; border: 1px solid rgba(255,255,255,.04); border-radius: 14px; content: ''; pointer-events: none; }
-  .stage-topline { position: absolute; top: 18px; left: 22px; right: 22px; display: flex; align-items: center; justify-content: space-between; z-index: 2; pointer-events: none; }
+  .stage-topline { position: absolute; top: 72px; left: 22px; right: 22px; display: flex; align-items: center; justify-content: space-between; z-index: 2; pointer-events: none; }
   .page-pill { padding: 7px 10px; color: #bdb1a2; background: rgba(28,25,22,.78); border: 1px solid rgba(255,255,255,.1); border-radius: 9px; font-size: 11px; backdrop-filter: blur(8px); }
   .page-pill b { color: #f1e9dd; font-variant-numeric: tabular-nums; }
   .stage-hint { color: #a2988b; font-size: 10px; }
-  .scan { max-width: min(74vw, 840px); max-height: calc(100% - 52px); object-fit: contain; user-select: none; transform-origin: center center; box-shadow: 0 16px 60px rgba(0,0,0,.45); outline: 1px solid rgba(255,255,255,.12); transition: transform .12s ease-out; }
+  .scan { flex: none; object-fit: contain; user-select: none; transform-origin: center center; box-shadow: 0 16px 60px rgba(0,0,0,.45); outline: 1px solid rgba(255,255,255,.12); transition: transform .12s ease-out; }
   .stage.dragging .scan { transition: none; }
-  .side-nav { position: absolute; inset: 0 18px; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
+  .side-nav { position: absolute; inset: 0 18px; display: flex; align-items: center; justify-content: space-between; pointer-events: none; z-index: 3; }
   .nav-btn { width: 42px; height: 42px; color: #d8cebf; background: rgba(28,25,22,.72); border-color: rgba(255,255,255,.1); border-radius: 50%; pointer-events: auto; backdrop-filter: blur(8px); }
   .nav-btn:hover { color: #fff; background: rgba(71,62,52,.92); }
-  .zoom-controls { position: absolute; right: 24px; bottom: 22px; display: flex; align-items: center; gap: 2px; padding: 4px; color: #d5cbbd; background: rgba(28,25,22,.82); border: 1px solid rgba(255,255,255,.1); border-radius: 12px; backdrop-filter: blur(8px); }
+  .zoom-controls { position: absolute; right: 24px; bottom: 22px; display: flex; align-items: center; gap: 2px; padding: 4px; color: #d5cbbd; background: rgba(28,25,22,.82); border: 1px solid rgba(255,255,255,.1); border-radius: 12px; backdrop-filter: blur(8px); z-index: 4; }
   .zoom-controls button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 30px; color: inherit; background: transparent; border: 0; border-radius: 8px; cursor: pointer; }
   .zoom-controls button:hover { background: rgba(255,255,255,.1); }
   .zoom-controls .zoom-value { width: 48px; color: #eee5d9; font-size: 10px; font-variant-numeric: tabular-nums; }
   .control-divider { width: 1px; height: 20px; margin: 0 3px; background: rgba(255,255,255,.14); }
   .rotation-value { display: inline-flex; align-items: center; justify-content: center; width: 30px; color: #eee5d9; font-size: 10px; font-variant-numeric: tabular-nums; }
   .loading { position: absolute; top: 50%; left: 50%; padding: 9px 12px; color: #c6bbad; background: rgba(28,25,22,.82); border-radius: 8px; transform: translate(-50%, -50%); font-size: 12px; }
-  .bottom-bar { display: flex; align-items: center; justify-content: space-between; min-height: 52px; padding: 0 24px; background: #292520; border-top: 1px solid rgba(255,255,255,.08); }
+  .bottom-bar { position: absolute; left: 18px; right: 18px; bottom: 18px; display: flex; align-items: center; justify-content: space-between; min-height: 48px; padding: 0 14px; background: rgba(41,37,32,.88); border: 1px solid rgba(255,255,255,.1); border-radius: 13px; backdrop-filter: blur(10px); z-index: 3; }
   .transport { display: flex; align-items: center; gap: 8px; }
   .transport-btn { width: 30px; height: 30px; color: #cfc3b4; border-radius: 8px; }
   .transport-btn:hover { background: rgba(255,255,255,.08); }
@@ -400,33 +377,24 @@
   .shortcut-line span { display: inline-flex; align-items: center; justify-content: center; min-width: 17px; margin: 0 3px; padding: 2px 3px; color: #d4c7b5; background: #3a332c; border-radius: 4px; font-size: 9px; }
   .reset-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px; color: #a89c8c; background: transparent; border: 0; cursor: pointer; font-size: 10px; }
   .reset-btn:hover { color: #eee5d9; }
-  .thumbs { display: flex; gap: 8px; height: 104px; padding: 9px 24px 10px; overflow-x: auto; background: #211e1b; border-top: 1px solid rgba(255,255,255,.06); scrollbar-color: #5b5045 transparent; }
-  .thumb { position: relative; flex: 0 0 61px; display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 3px 3px 4px; color: #897d70; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; font-size: 9px; font-variant-numeric: tabular-nums; }
-  .thumb:hover { color: #ddd3c6; background: rgba(255,255,255,.05); }
-  .thumb.selected { color: #f1e7d8; background: rgba(217,194,163,.13); border-color: #c8aa84; }
-  .thumb img, .thumb-placeholder { width: 52px; height: 72px; object-fit: cover; background: #39332d; outline: 1px solid rgba(255,255,255,.1); }
-  .thumb-placeholder { display: flex; align-items: center; justify-content: center; color: #a89c8c; font-size: 9px; }
-  .empty { align-self: center; color: #958a7d; font-size: 12px; }
   .shortcut-popover { position: absolute; top: 62px; right: 70px; z-index: 8; display: flex; flex-direction: column; gap: 8px; width: 210px; padding: 15px 17px; color: #b9ad9f; background: rgba(42,37,32,.97); border: 1px solid #574c41; border-radius: 13px; box-shadow: 0 12px 35px rgba(0,0,0,.35); font-size: 11px; }
   .shortcut-popover strong { color: #eee5d9; font-size: 12px; }
   .popover-close { position: absolute; top: 8px; right: 8px; display: flex; padding: 3px; color: #988d80; background: transparent; border: 0; cursor: pointer; }
   kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 17px; margin-right: 3px; color: #ede3d6; background: #564a3e; border-radius: 4px; font: 9px/1 Manrope, system-ui, sans-serif; }
   .popover-note { margin-top: 3px; padding-top: 9px; color: #94887b; border-top: 1px solid rgba(255,255,255,.08); line-height: 1.45; }
   @media (max-width: 800px) {
-    .topbar { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+    .topbar { flex-wrap: wrap; gap: 8px; padding: 9px 12px; }
     .brand { min-width: 0; flex: 1; }
     .filter-row { order: 3; width: 100%; overflow: auto; }
     .top-actions { gap: 2px; }
     .result-count { margin-left: auto; }
+    .stage-topline { top: 112px; }
     .stage-hint { display: none; }
     .stage::before { inset: 12px; }
-    .scan { max-width: 88vw; max-height: calc(100% - 35px); }
     .side-nav { inset: 0 8px; }
     .zoom-controls { right: 12px; bottom: 14px; }
-    .bottom-bar { min-height: 48px; padding: 0 12px; }
+    .bottom-bar { left: 10px; right: 10px; bottom: 10px; min-height: 46px; padding: 0 8px; }
     .shortcut-line, .reset-btn { display: none; }
-    .thumbs { height: 94px; padding-left: 12px; padding-right: 12px; }
-    .thumb img, .thumb-placeholder { height: 64px; }
     .shortcut-popover { top: 108px; right: 12px; }
   }
 </style>

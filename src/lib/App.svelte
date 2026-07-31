@@ -7,7 +7,6 @@
   import Tree from './Tree.svelte';
   import Detail from './Detail.svelte';
   import Search from './Search.svelte';
-  import ScanGallery from './ScanGallery.svelte';
   import type { Component } from 'svelte';
   import { Map as MapIcon, TreePine, LocateFixed, Plus, Minus, Maximize, Info, Star, Cross, Grid2X2 } from '@lucide/svelte';
 
@@ -19,6 +18,7 @@
   let legendOpen = $state(false);
   let mode = $state<'tree' | 'map' | 'gallery'>('tree');
   let MapView = $state<Component<any> | null>(null);
+  let ScanGallery = $state<Component<any> | null>(null);
   let treeRef: Tree | undefined = $state();
 
   const mobile = $derived(vw <= 640);
@@ -34,6 +34,9 @@
       tree = t;
     } catch (e) {
       error = (e as Error).message;
+    }
+    if (import.meta.env.DEV) {
+      ScanGallery = (await import('./ScanGallery.svelte')).default as Component<any>;
     }
     const onR = () => (vw = window.innerWidth);
     window.addEventListener('resize', onR);
@@ -68,7 +71,7 @@
     <div class="center err">Не удалось загрузить данные древа: {error}</div>
   {:else if !tree || !layout}
     <div class="center muted">Загрузка древа…</div>
-  {:else if mode === 'gallery'}
+  {:else if mode === 'gallery' && ScanGallery}
     <ScanGallery onclose={() => (mode = 'tree')} />
   {:else}
     <Tree bind:this={treeRef} {tree} {layout} {selected} onselect={select} />
@@ -118,9 +121,11 @@
     {/if}
 
     <div class="controls">
-      <button class="ctl light" onclick={toggleGallery} title="Временная галерея сканов" aria-label="Временная галерея сканов">
-        <Grid2X2 size={19} strokeWidth={2} />
-      </button>
+      {#if import.meta.env.DEV}
+        <button class="ctl light" onclick={toggleGallery} title="Временная галерея сканов" aria-label="Временная галерея сканов">
+          <Grid2X2 size={19} strokeWidth={2} />
+        </button>
+      {/if}
       <button class="ctl light" onclick={toggleMap} title={mode === 'map' ? 'К дереву' : 'Карта рода'} aria-label={mode === 'map' ? 'К дереву' : 'Карта рода'}>
         {#if mode === 'map'}<TreePine size={20} strokeWidth={2} />{:else}<MapIcon size={20} strokeWidth={2} />{/if}
       </button>
