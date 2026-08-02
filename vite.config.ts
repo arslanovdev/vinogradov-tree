@@ -3,7 +3,7 @@ import { resolve, sep } from 'node:path';
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 
-const temporaryScanRoot = '/private/tmp/1857-fedorovka-gallery/preview';
+const temporaryScanRoot = '/private/tmp/r473op1d4430-gallery/normalized';
 
 function temporaryScanFiles(command: 'serve' | 'build') {
   if (command !== 'serve') return null;
@@ -11,7 +11,7 @@ function temporaryScanFiles(command: 'serve' | 'build') {
     name: 'temporary-scan-gallery-files',
     apply: 'serve' as const,
     configureServer(server: { middlewares: { use: (path: string, handler: (req: any, res: any, next: () => void) => void) => void } }) {
-      server.middlewares.use('/i294op1d587', (req, res, next) => {
+      server.middlewares.use('/r473op1d4430', (req, res, next) => {
         const requestPath = decodeURIComponent((req.url ?? '/').split('?')[0]);
         const filePath = resolve(temporaryScanRoot, `.${requestPath}`);
         if (!filePath.startsWith(temporaryScanRoot + sep)) return next();

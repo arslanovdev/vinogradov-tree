@@ -31,8 +31,8 @@
 
   let { onclose }: { onclose: () => void } = $props();
 
-  const pages = buildScanPages(106, 'i294op1d587', 1, 'webp');
-  const storageKey = 'vinogradov-tree.scan-gallery.i294op1d587.v1';
+  const pages = buildScanPages(28, 'r473op1d4430', 1, 'jpg');
+  const storageKey = 'vinogradov-tree.scan-gallery.r473op1d4430.v1';
   let query = $state('');
   let parity = $state<ScanParity>('all');
   let currentNumber = $state(1);
@@ -224,7 +224,7 @@
       <button class="icon-btn" onclick={onclose} title="Вернуться к дереву" aria-label="Вернуться к дереву"><ArrowLeft size={19} /></button>
       <div>
         <div class="eyebrow">Временный просмотр архива</div>
-      <h1>Сканы · Фёдоровка 1857</h1>
+      <h1>Сканы · r473op1d4430</h1>
       </div>
     </div>
 
