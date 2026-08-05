@@ -232,6 +232,19 @@ describe('person details', () => {
     ]));
     expect(detail?.timeline.some((event) => event.label === 'Пустое событие')).toBe(false);
   });
+
+  it('orders Valentin Vinogradov’s documented moves around his marriage', () => {
+    const valentin = buildDetail(tree, '@I4@', buildLayout(tree));
+
+    expect(valentin?.timeline.map((event) => event.label)).toEqual([
+      'Рождение',
+      'Переезд в Салават',
+      'Брак',
+      'Переезд в Фёдоровку',
+      'Смерть',
+      'Захоронение',
+    ]);
+  });
 });
 
 describe('clustering', async () => {
