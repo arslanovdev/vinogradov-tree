@@ -43,6 +43,23 @@ export function buildScanPages(
   });
 }
 
+export function buildScanPagesFromLabels(
+  labels: readonly string[],
+  folder: string,
+  extension = 'jpg',
+): ScanPage[] {
+  return labels.map((label, index) => {
+    const parsed = Number.parseInt(label, 10);
+    return {
+      number: Number.isFinite(parsed) ? parsed : index,
+      label,
+      url: `${folder}/${label}.${extension}`,
+      thumbUrl: `${folder}/thumbs/${label}.jpg`,
+      orientation: 'portrait',
+    };
+  });
+}
+
 export function filterScanPages(pages: ScanPage[], query: string, parity: ScanParity): ScanPage[] {
   const normalized = query.trim().toLowerCase();
   return pages.filter((page) => {

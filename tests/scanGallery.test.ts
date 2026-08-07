@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildScanPages,
+  buildScanPagesFromLabels,
   fitScanImage,
   filterScanPages,
   nextScanIndex,
@@ -33,6 +34,14 @@ describe('scan gallery model', () => {
     const pages = buildScanPages(2, 'i294op3d189', 106, 'JPG', 8);
     expect(pages.map((page) => page.label)).toEqual(['00000106', '00000107']);
     expect(pages[0]?.url).toBe('i294op3d189/00000106.JPG');
+  });
+
+  it('builds pages from explicit labels including gaps', () => {
+    const pages = buildScanPagesFromLabels(['0000', '0002', '0003'], 'r473op1d3803');
+    expect(pages.map((page) => page.label)).toEqual(['0000', '0002', '0003']);
+    expect(pages.map((page) => page.number)).toEqual([0, 2, 3]);
+    expect(pages[1]?.url).toBe('r473op1d3803/0002.jpg');
+    expect(pages[1]?.thumbUrl).toBe('r473op1d3803/thumbs/0002.jpg');
   });
 
   it('filters by page query and parity', () => {
