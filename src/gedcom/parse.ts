@@ -10,12 +10,34 @@ function parseCoord(v: string): number | undefined {
 }
 
 /** Парсер GEDCOM 5.5.1 + наши кастомные теги (_CONF, _TODO) и OBJE/RELI/QUAY/MAP. */
+function collectSourTitles(text: string): Record<string, string> {
+  // SOUR-записи лежат в конце файла, поэтому TITL собираем отдельным проходом,
+  // чтобы цитаты `1 SOUR @Sxx@` резолвились независимо от порядка записей.
+  const titles: Record<string, string> = {};
+  let cur: string | null = null;
+  for (const raw of text.split(/\r?\n/)) {
+    const parts = raw.split(' ');
+    const level = +parts[0];
+    if (level === 0 && parts[1]?.startsWith('@') && parts[2] === 'SOUR') {
+      cur = parts[1];
+    } else if (level === 1 && cur) {
+      if (parts[1] === 'TITL') titles[cur] = parts.slice(2).join(' ') || '';
+      cur = null;
+    }
+  }
+  return titles;
+}
+
 export function parseGedcom(text: string): Tree {
   const indi: Record<string, Indi> = {};
   const fam: Record<string, Fam> = {};
+  const sourTitles = collectSourTitles(text);
   let cur: Indi | Fam | null = null;
-  let curType: 'I' | 'F' | null = null;
+  let curType: 'I' | 'F' | 'S' | null = null;
+  let sourRef: string | null = null;
   let sub: GEvent | null = null;
+  // Индекс последней цитаты, ожидающей `PAGE` (уровень 2 под записью или уровень 3 под событием).
+  let pendingPage: { idx: number } | null = null;
 
   for (const raw of text.split(/\r?\n/)) {
     if (!raw.trim()) continue;
@@ -35,18 +57,26 @@ export function parseGedcom(text: string): Tree {
 
     if (level === 0) {
       sub = null;
+      pendingPage = null;
       if (tag === 'INDI' && xref) {
         cur = indi[xref] = { id: xref, notes: [], sources: [], todo: [], fams: [], famc: null, events: [], media: [], documents: [] };
         curType = 'I';
       } else if (tag === 'FAM' && xref) {
         cur = fam[xref] = { id: xref, chil: [], notes: [] };
         curType = 'F';
+      } else if (tag === 'SOUR' && xref) {
+        sourRef = xref;
+        cur = null;
+        curType = 'S';
       } else {
         cur = null;
         curType = null;
       }
+    } else if (level === 1 && curType === 'S' && sourRef) {
+      if (tag === 'TITL' && value) sourTitles[sourRef] = value;
     } else if (level === 1 && cur) {
       sub = null;
+      pendingPage = null;
       if (curType === 'I') {
         const p = cur as Indi;
         switch (tag) {
@@ -57,7 +87,11 @@ export function parseGedcom(text: string): Tree {
           case '_CONF': p.conf = value ?? undefined; break;
           case '_TODO': if (value) p.todo.push(value); break;
           case 'NOTE': if (value) p.notes.push(value); break;
-          case 'SOUR': if (value) p.sources.push(value); break;
+          case 'SOUR': if (value) {
+            const resolved = value.startsWith('@') ? (sourTitles[value] ?? value) : value;
+            p.sources.push(resolved);
+            if (value.startsWith('@')) pendingPage = { idx: p.sources.length - 1 };
+          } break;
           case 'FAMC': p.famc = value; break;
           case 'FAMS': if (value) p.fams.push(value); break;
           case 'BIRT': p.birt = {}; sub = p.birt; break;
@@ -88,15 +122,31 @@ export function parseGedcom(text: string): Tree {
         else if (tag === 'TITL') sub.titl = value ?? undefined;
         else if (tag === 'FORM') sub.form = value ?? undefined;
         else if (tag === '_KIND') sub.kind = value ?? undefined;
+        else if (tag === 'SOUR' && value && cur) {
+          const p = cur as Indi;
+          const resolved = value.startsWith('@') ? (sourTitles[value] ?? value) : value;
+          p.sources.push(resolved);
+          if (value.startsWith('@')) pendingPage = { idx: p.sources.length - 1 };
+        } else if (tag === 'PAGE' && value && pendingPage && cur) {
+          (cur as Indi).sources[pendingPage.idx] += '; ' + value;
+          pendingPage = null;
+        }
       } else if (curType === 'I' && cur) {
         const p = cur as Indi;
         if (tag === 'SURN') p.surn = value ?? undefined;
         else if (tag === 'GIVN') p.givn = value ?? undefined;
         else if (tag === 'QUAY' && value != null) p.quay = +value;
+        else if (tag === 'PAGE' && value && pendingPage) {
+          p.sources[pendingPage.idx] += '; ' + value;
+          pendingPage = null;
+        }
       }
     } else if (level >= 3 && sub) {
       // координаты места: 3 MAP / 4 LATI N53.18 / 4 LONG E55.19
-      if (tag === 'LATI' && value) sub.lat = parseCoord(value);
+      if (tag === 'PAGE' && value && pendingPage && cur) {
+        (cur as Indi).sources[pendingPage.idx] += '; ' + value;
+        pendingPage = null;
+      } else if (tag === 'LATI' && value) sub.lat = parseCoord(value);
       else if (tag === 'LONG' && value) sub.lon = parseCoord(value);
     }
   }

@@ -197,6 +197,37 @@ describe('person details', () => {
     expect(detail?.sources[0].detail).toBe('; второй фрагмент; третий фрагмент');
   });
 
+  it('resolves SOUR XREF records with TITL and PAGE under the record and under BIRT', () => {
+    const parsed = parseGedcom([
+      '0 @S1@ SOUR',
+      '1 TITL Метрическая книга прихода с. Фёдоровка, 1916–1919 — НА РБ, ф. И-294, оп. 7, д. 1522',
+      '0 @I1@ INDI',
+      '1 NAME Камышлов Василий Романович',
+      '1 BIRT',
+      '2 DATE 6 JAN 1916',
+      '2 SOUR @S1@',
+      '3 PAGE запись №3 мужского пола: Василий, рожд. 06.01.1916',
+      '1 SOUR @S1@',
+      '2 PAGE фотография листа из личного архива',
+    ].join('\n'));
+
+    const sources = parsed.indi['@I1@'].sources;
+    expect(sources).toHaveLength(2);
+    expect(sources[0]).toContain('Метрическая книга прихода с. Фёдоровка, 1916–1919');
+    expect(sources[0]).toContain('запись №3 мужского пола: Василий, рожд. 06.01.1916');
+    expect(sources[1]).toContain('Метрическая книга прихода с. Фёдоровка, 1916–1919');
+    expect(sources[1]).toContain('фотография листа из личного архива');
+  });
+
+  it('keeps unknown SOUR XREF as-is when the record is missing', () => {
+    const parsed = parseGedcom([
+      '0 @I1@ INDI',
+      '1 NAME Тестов Тест',
+      '1 SOUR @S999@',
+    ].join('\n'));
+    expect(parsed.indi['@I1@'].sources).toEqual(['@S999@']);
+  });
+
   it('keeps Bekin scans as documents without listing the Red Book as a source', () => {
     const egor = buildDetail(tree, '@I17@', buildLayout(tree));
 
