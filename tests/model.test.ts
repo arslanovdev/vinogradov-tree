@@ -228,6 +228,24 @@ describe('person details', () => {
     expect(parsed.indi['@I1@'].sources).toEqual(['@S999@']);
   });
 
+  it('renders clean card titles for structured citation records', () => {
+    const parsed = parseGedcom([
+      '0 @S1@ SOUR',
+      '1 TITL «Память народа» — электронный банк документов (pamyat-naroda.ru)',
+      '0 @S2@ SOUR',
+      '1 TITL Рабочая индексация «МК Федоровки 1845-1857.xlsx»',
+      '0 @I1@ INDI',
+      '1 NAME Тестов Тест',
+      '1 SOUR @S1@',
+      '2 PAGE запись 66068316; https://pamyat-naroda.ru/heroes/x',
+      '1 SOUR @S2@',
+      '2 PAGE вкладка «Рождение», строка 1465',
+    ].join('\n'));
+
+    const detail = buildDetail(parsed, '@I1@', buildLayout(parsed));
+    expect(detail?.sources.map((s) => s.title)).toEqual(['«Память народа»', 'Рабочая индексация МК Фёдоровки']);
+  });
+
   it('keeps Bekin scans as documents without listing the Red Book as a source', () => {
     const egor = buildDetail(tree, '@I17@', buildLayout(tree));
 

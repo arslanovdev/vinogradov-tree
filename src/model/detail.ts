@@ -68,6 +68,23 @@ function sourceTitle(text: string): string {
   const tree = text.match(/Familio\s*\((древо[^)]*)\)/i);
   if (tree) return tree[1][0].toUpperCase() + tree[1].slice(1);
   if (/Familio/i.test(text) && /familio\.org\/persons\//i.test(text)) return 'Профиль Familio';
+  // Заголовки структурных SOUR-записей (TITL + PAGE), чтобы эвристика не резала
+  // титул по точке внутри «pamyat-naroda.ru», «.xlsx» или архивного «ф. …».
+  if (/РС\s*1795/i.test(text)) return 'Ревизская сказка 1795';
+  if (/rsfedorovkamordva1795/i.test(text)) return 'Familio, каталог ревизий Фёдоровки';
+  if (/Бекин.*«Красная книга»/i.test(text)) return '«Красная книга» А. М. Бекина';
+  if (/Рабочая индексация «МК Федоровки/i.test(text)) return 'Рабочая индексация МК Фёдоровки';
+  if (/Память народа/i.test(text)) return '«Память народа»';
+  if (/ОБД\s*«Мемориал»/i.test(text)) return 'ОБД «Мемориал»';
+  if (/«Подвиг народа»/i.test(text)) return '«Подвиг народа»';
+  if (/Асфандияров/i.test(text)) return 'Асфандияров А. З.';
+  if (/Кийков/i.test(text)) return 'Кийков А.';
+  if (/Освобождение Беларуси/i.test(text)) return '«Освобождение Беларуси. 1943–1944»';
+  if (/МБСУ «Ритуал»/i.test(text)) return 'МБСУ «Ритуал» г. Салавата';
+  if (/Поселенный список переписи 1926/i.test(text)) return 'Поселенный список переписи 1926';
+  if (/Книга учёта движения населения г\. Оренбурга/i.test(text)) return 'Книга учёта движения населения г. Оренбурга';
+  if (/Соглашение жителей Алмантаева/i.test(text)) return 'Соглашение о переселении, 1812';
+  if (/Причисление 52 душ/i.test(text)) return 'Причисление переселенцев, 1807';
   const first = cleanupSourceText(text).split(/[.;:]/)[0].trim();
   return first.length > 80 ? first.slice(0, 77) + '...' : first || 'Источник';
 }
