@@ -474,6 +474,8 @@ def convert(records):
 def render(records, new_sour_records):
     out = []
     for rec in records:
+        if rec[1] == "TRLR":
+            continue  # TRLR выводится один раз в конце, после SOUR-записей
         out.extend(rec[3])
     for rec in new_sour_records:
         out.extend(rec)

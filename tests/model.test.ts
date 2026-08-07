@@ -234,16 +234,24 @@ describe('person details', () => {
       '1 TITL «Память народа» — электронный банк документов (pamyat-naroda.ru)',
       '0 @S2@ SOUR',
       '1 TITL Рабочая индексация «МК Федоровки 1845-1857.xlsx»',
+      '0 @S3@ SOUR',
+      '1 TITL Базилевское товарищество Крестьянского поземельного банка, 1903 — НА РБ, ф. И-336, оп. 1, д. 1218',
       '0 @I1@ INDI',
       '1 NAME Тестов Тест',
       '1 SOUR @S1@',
       '2 PAGE запись 66068316; https://pamyat-naroda.ru/heroes/x',
       '1 SOUR @S2@',
       '2 PAGE вкладка «Рождение», строка 1465',
+      '1 SOUR @S3@',
+      '2 PAGE список Базилевского товарищества, 1903',
     ].join('\n'));
 
     const detail = buildDetail(parsed, '@I1@', buildLayout(parsed));
-    expect(detail?.sources.map((s) => s.title)).toEqual(['«Память народа»', 'Рабочая индексация МК Фёдоровки']);
+    expect(detail?.sources.map((s) => s.title)).toEqual([
+      '«Память народа»',
+      'Рабочая индексация МК Фёдоровки',
+      'Базилевское товарищество КПБ, 1903',
+    ]);
   });
 
   it('keeps Bekin scans as documents without listing the Red Book as a source', () => {
