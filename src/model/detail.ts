@@ -1,4 +1,4 @@
-import type { Tree, Indi, Side } from '../gedcom/types';
+import type { Tree, Indi, Side, SourceCitation } from '../gedcom/types';
 import type { Layout } from './layout';
 import { relAnc, confOf, lifespan, fmtDate, nameParts, linkifySource, colorOf, softOf } from './derive';
 
@@ -11,7 +11,14 @@ export interface TimelineEntry {
   kind: 'life' | 'military';
 }
 export interface Archival { date: string | null; body: string; }
-export interface SourceRef { title: string; detail: string | null; repository: string | null; url: string | null; }
+export interface SourceRef {
+  title: string;
+  description: string | null;
+  citations: string[];
+  detail: string | null;
+  repository: string | null;
+  url: string | null;
+}
 export interface Group { title: string; items: Chip[]; }
 export interface DocRef { file: string; title: string; }
 
@@ -47,11 +54,17 @@ function cleanupSourceText(text: string): string {
     .replace(/^Familio(?:\s*\([^)]*\))?\s*[—-]\s*/i, '')
     .replace(/^pamyat-naroda\.ru\s*[—-]\s*/i, '')
     .replace(/\s*https?:\/\/\S+\s*/g, ' ')
+    .replace(/\s*\/sources\/[A-Za-z0-9._-]+\.pdf(?:#page=\d+)?\s*/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
 function sourceTitle(text: string): string {
+  if (/Память народа/i.test(text)) return '«Память народа»';
+  if (/ОБД\s*«Мемориал»/i.test(text)) return 'ОБД «Мемориал»';
+  if (/«Подвиг народа»/i.test(text)) return '«Подвиг народа»';
+  if (/Они вернулись с Победой/i.test(text)) return 'Книга «Они вернулись с Победой»';
+  if (/Герои тыла/i.test(text)) return 'Книга «Герои тыла»';
   if (/наградн/i.test(text)) return 'Наградной лист';
   if (/донесен|потер/i.test(text)) return 'Донесение о потерях';
   if (/военноплен|плен/i.test(text)) return 'Карточка военнопленного';
@@ -62,8 +75,6 @@ function sourceTitle(text: string): string {
   if (/РС\s*1834|ревиз/i.test(text) && /1834/.test(text)) return 'Ревизская сказка 1834';
   if (/РС\s*1811|ревиз/i.test(text) && /1811/.test(text)) return 'Ревизская сказка 1811';
   if (/метрик|метрич/i.test(text)) return 'Метрическая книга';
-  if (/Они вернулись с Победой/i.test(text)) return 'Книга «Они вернулись с Победой»';
-  if (/Герои тыла/i.test(text)) return 'Книга «Герои тыла»';
   if (/Книга памяти/i.test(text)) return 'Книга памяти';
   const tree = text.match(/Familio\s*\((древо[^)]*)\)/i);
   if (tree) return tree[1][0].toUpperCase() + tree[1].slice(1);
@@ -74,9 +85,6 @@ function sourceTitle(text: string): string {
   if (/rsfedorovkamordva1795/i.test(text)) return 'Familio, каталог ревизий Фёдоровки';
   if (/Бекин.*«Красная книга»/i.test(text)) return '«Красная книга» А. М. Бекина';
   if (/Рабочая индексация «МК Федоровки/i.test(text)) return 'Рабочая индексация МК Фёдоровки';
-  if (/Память народа/i.test(text)) return '«Память народа»';
-  if (/ОБД\s*«Мемориал»/i.test(text)) return 'ОБД «Мемориал»';
-  if (/«Подвиг народа»/i.test(text)) return '«Подвиг народа»';
   if (/Асфандияров/i.test(text)) return 'Асфандияров А. З.';
   if (/Кийков/i.test(text)) return 'Кийков А.';
   if (/Освобождение Беларуси/i.test(text)) return '«Освобождение Беларуси. 1943–1944»';
@@ -92,7 +100,7 @@ function sourceTitle(text: string): string {
 }
 
 function sourceRepository(text: string): string | null {
-  if (/pamyat-naroda|ЦАМО|person-hero|podvig-chelovek|donesenie|nagrazhdenie/i.test(text)) return 'Память народа / ЦАМО';
+  if (/pamyat-naroda|podvignaroda|ЦАМО|person-hero|podvig-chelovek|donesenie|nagrazhdenie/i.test(text)) return 'Память народа / ЦАМО';
   if (/Familio/i.test(text)) return 'Familio';
   if (/НА РБ|ф\.[РИИ]-|фонд/i.test(text)) return 'НА РБ';
   if (/РГБ|viewer\.rsl/i.test(text)) return 'РГБ';
@@ -100,15 +108,66 @@ function sourceRepository(text: string): string | null {
   return null;
 }
 
-function formatSource(text: string): SourceRef {
-  const directUrl = text.match(/https?:\/\/\S+/)?.[0] ?? null;
-  const linked = linkifySource(text);
-  const url = directUrl || linked.url;
+function sourceUrl(text: string): string | null {
+  const direct = text.match(/https?:\/\/\S+|\/sources\/[A-Za-z0-9._-]+\.pdf(?:#page=\d+)?/)?.[0] ?? null;
+  return direct || linkifySource(text).url;
+}
+
+function citationKey(citation: SourceCitation): string {
+  const url = sourceUrl([citation.title, citation.page].filter(Boolean).join('; '));
+  if (url?.startsWith('/sources/')) return `document:${url.replace(/#page=\d+$/, '')}`;
+  if (url) return `url:${url}`;
+  if (citation.sourceId) return `source:${citation.sourceId}`;
+  return `inline:${citation.title.replace(/\s+/g, ' ').trim().toLocaleLowerCase('ru')}`;
+}
+
+function formatSource(citation: SourceCitation): SourceRef {
+  const combined = [citation.title, citation.page].filter(Boolean).join('; ');
+  const url = sourceUrl(combined);
+  const title = sourceTitle(citation.title);
+  let description = cleanupSourceText(citation.title);
+  description = description.replace(title, '').replace(/^[\s:—-]+/, '').trim();
+  const citationDetail = citation.page ? cleanupSourceText(citation.page) : '';
+  const citations = citationDetail ? [citationDetail] : [];
+  const detailParts = [description, ...citations].filter(Boolean);
+  const repository = /Familio/i.test(title) ? null : sourceRepository(combined);
+  return {
+    title,
+    description: description || null,
+    citations,
+    detail: detailParts.join(' ') || null,
+    repository,
+    url,
+  };
+}
+
+function mergeSources(citations: SourceCitation[]): SourceRef[] {
+  const grouped = new Map<string, SourceRef>();
+  for (const citation of citations) {
+    const formatted = formatSource(citation);
+    const key = citationKey(citation);
+    const existing = grouped.get(key);
+    if (!existing) {
+      grouped.set(key, formatted);
+      continue;
+    }
+    for (const item of formatted.citations) {
+      if (!existing.citations.includes(item)) existing.citations.push(item);
+    }
+    existing.detail = [existing.description, ...existing.citations].filter(Boolean).join(' ') || null;
+    existing.repository ||= formatted.repository;
+    existing.url ||= formatted.url;
+  }
+  return [...grouped.values()];
+}
+
+function formatLegacySource(text: string): SourceRef {
+  const url = sourceUrl(text);
   const title = sourceTitle(text);
   let detail = cleanupSourceText(text);
   detail = detail.replace(title, '').replace(/^[\s:—-]+/, '').trim();
   const repository = /Familio/i.test(title) ? null : sourceRepository(text);
-  return { title, detail: detail || null, repository, url };
+  return { title, description: detail || null, citations: [], detail: detail || null, repository, url };
 }
 
 export function relationFor(tree: Tree, id: string, layout: Layout): string {
@@ -151,11 +210,10 @@ export function buildDetail(tree: Tree, id: string, layout: Layout): Detail | nu
   const todo = p.todo.slice();
   notes.forEach((n) => { const m = n.match(/^\s*\[(?:ИСКАТЬ|ЛИДЫ|TODO)\]\s*([\s\S]*)$/i); if (m && m[1].trim()) todo.push(m[1].trim()); });
 
-  const sources: SourceRef[] = [];
-  p.sources.forEach((s) => {
-    const v = s.trim();
-    if (v) sources.push(formatSource(v));
-  });
+  const structured = p.sourceCitations?.filter((citation) => citation.title.trim()) ?? [];
+  const sources = structured.length
+    ? mergeSources(structured)
+    : p.sources.map((s) => s.trim()).filter(Boolean).map((s) => formatLegacySource(s));
 
   const facts: Fact[] = [];
   if (np.retroSurn) facts.push({ label: 'Фамилия', value: `«${np.retroSurn}» — ретроспективная, по селу; в эту эпоху фамилий ещё не было` });

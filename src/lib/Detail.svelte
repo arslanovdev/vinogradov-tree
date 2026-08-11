@@ -3,6 +3,7 @@
   import type { Layout } from '../model/layout';
   import { buildDetail } from '../model/detail';
   import { X, Search, Square, FileText, Landmark, MapPin } from '@lucide/svelte';
+  import SourceCard from './SourceCard.svelte';
 
   let { tree, layout, id, mobile = false, onclose, ongoto }:
     { tree: Tree; layout: Layout; id: string; mobile?: boolean; onclose: () => void; ongoto: (id: string) => void } = $props();
@@ -142,14 +143,7 @@
       <div class="sec">
         <div class="sech">Источники</div>
         {#each d.sources as s}
-          <div class="srow sourcecard">
-            <span class="sx"><FileText size={13} strokeWidth={2} /></span>
-            <div class="sbody">
-              {#if s.url}<a class="stitle" href={s.url} target="_blank" rel="noopener noreferrer">{s.title}</a>{:else}<span class="stitle">{s.title}</span>{/if}
-              {#if s.detail}<span class="sdetail">{s.detail}</span>{/if}
-              {#if s.repository}<span class="srepo">{s.repository}</span>{/if}
-            </div>
-          </div>
+          <SourceCard source={s} />
         {/each}
       </div>
     {/if}
@@ -251,14 +245,6 @@
   .pn { display: inline-flex; gap: 5px; font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); background: var(--soft); border-radius: 6px; padding: 3px 8px; }
   .adate { font-size: 11px; color: #a59a8c; font-variant-numeric: tabular-nums; }
   .abody { font-size: 12.5px; color: #4a443b; line-height: 1.65; }
-  .srow { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid #f1ece3; }
-  .sourcecard { border: 1px solid #efe9df; border-radius: 8px; padding: 10px 11px; margin-bottom: 7px; background: #fffbf5; }
-  .sx { color: var(--accent); font-size: 13px; flex: none; }
-  .sbody { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-  .srow a { color: var(--accent); text-underline-offset: 2px; }
-  .stitle { font-size: 12.5px; font-weight: 700; color: #3f382f; line-height: 1.35; word-break: break-word; }
-  .sdetail { font-size: 11.5px; color: #6a6358; line-height: 1.45; word-break: break-word; }
-  .srepo { align-self: flex-start; margin-top: 2px; border-radius: 999px; background: var(--soft); color: var(--accent); padding: 2px 7px; font-size: 9.5px; font-weight: 700; }
   .chips { display: flex; flex-wrap: wrap; gap: 7px; }
   .chip { background: var(--soft); color: var(--accent); border: none; border-radius: 999px; padding: 7px 13px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
   .chip:hover { filter: brightness(0.96); transform: translateY(-1px); }

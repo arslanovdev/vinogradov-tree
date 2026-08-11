@@ -10,6 +10,12 @@ export interface GEvent {
   lon?: number;
 }
 
+export interface SourceCitation {
+  sourceId: string | null;
+  title: string;
+  page?: string;
+}
+
 export interface Indi {
   id: string;
   name?: string;
@@ -22,6 +28,7 @@ export interface Indi {
   quay?: number; // 0..3
   notes: string[];
   sources: string[];
+  sourceCitations?: SourceCitation[];
   todo: string[];
   fams: string[];
   famc: string | null;

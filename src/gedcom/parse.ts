@@ -37,7 +37,23 @@ export function parseGedcom(text: string): Tree {
   let sourRef: string | null = null;
   let sub: GEvent | null = null;
   // Индекс последней цитаты, ожидающей `PAGE` (уровень 2 под записью или уровень 3 под событием).
-  let pendingPage: { idx: number } | null = null;
+  let pendingPage: { sourceIdx: number; citationIdx: number } | null = null;
+
+  const addSource = (p: Indi, value: string) => {
+    const sourceId = value.startsWith('@') ? value : null;
+    const title = sourceId ? (sourTitles[sourceId] ?? value) : value;
+    p.sources.push(title);
+    p.sourceCitations ??= [];
+    p.sourceCitations.push({ sourceId, title });
+    pendingPage = { sourceIdx: p.sources.length - 1, citationIdx: p.sourceCitations.length - 1 };
+  };
+
+  const addPage = (p: Indi, value: string) => {
+    if (!pendingPage) return;
+    p.sources[pendingPage.sourceIdx] += '; ' + value;
+    if (p.sourceCitations) p.sourceCitations[pendingPage.citationIdx].page = value;
+    pendingPage = null;
+  };
 
   for (const raw of text.split(/\r?\n/)) {
     if (!raw.trim()) continue;
@@ -59,7 +75,7 @@ export function parseGedcom(text: string): Tree {
       sub = null;
       pendingPage = null;
       if (tag === 'INDI' && xref) {
-        cur = indi[xref] = { id: xref, notes: [], sources: [], todo: [], fams: [], famc: null, events: [], media: [], documents: [] };
+        cur = indi[xref] = { id: xref, notes: [], sources: [], sourceCitations: [], todo: [], fams: [], famc: null, events: [], media: [], documents: [] };
         curType = 'I';
       } else if (tag === 'FAM' && xref) {
         cur = fam[xref] = { id: xref, chil: [], notes: [] };
@@ -87,11 +103,7 @@ export function parseGedcom(text: string): Tree {
           case '_CONF': p.conf = value ?? undefined; break;
           case '_TODO': if (value) p.todo.push(value); break;
           case 'NOTE': if (value) p.notes.push(value); break;
-          case 'SOUR': if (value) {
-            const resolved = value.startsWith('@') ? (sourTitles[value] ?? value) : value;
-            p.sources.push(resolved);
-            if (value.startsWith('@')) pendingPage = { idx: p.sources.length - 1 };
-          } break;
+          case 'SOUR': if (value) addSource(p, value); break;
           case 'FAMC': p.famc = value; break;
           case 'FAMS': if (value) p.fams.push(value); break;
           case 'BIRT': p.birt = {}; sub = p.birt; break;
@@ -123,13 +135,9 @@ export function parseGedcom(text: string): Tree {
         else if (tag === 'FORM') sub.form = value ?? undefined;
         else if (tag === '_KIND') sub.kind = value ?? undefined;
         else if (tag === 'SOUR' && value && cur) {
-          const p = cur as Indi;
-          const resolved = value.startsWith('@') ? (sourTitles[value] ?? value) : value;
-          p.sources.push(resolved);
-          if (value.startsWith('@')) pendingPage = { idx: p.sources.length - 1 };
+          addSource(cur as Indi, value);
         } else if (tag === 'PAGE' && value && pendingPage && cur) {
-          (cur as Indi).sources[pendingPage.idx] += '; ' + value;
-          pendingPage = null;
+          addPage(cur as Indi, value);
         }
       } else if (curType === 'I' && cur) {
         const p = cur as Indi;
@@ -137,15 +145,13 @@ export function parseGedcom(text: string): Tree {
         else if (tag === 'GIVN') p.givn = value ?? undefined;
         else if (tag === 'QUAY' && value != null) p.quay = +value;
         else if (tag === 'PAGE' && value && pendingPage) {
-          p.sources[pendingPage.idx] += '; ' + value;
-          pendingPage = null;
+          addPage(p, value);
         }
       }
     } else if (level >= 3 && sub) {
       // координаты места: 3 MAP / 4 LATI N53.18 / 4 LONG E55.19
       if (tag === 'PAGE' && value && pendingPage && cur) {
-        (cur as Indi).sources[pendingPage.idx] += '; ' + value;
-        pendingPage = null;
+        addPage(cur as Indi, value);
       } else if (tag === 'LATI' && value) sub.lat = parseCoord(value);
       else if (tag === 'LONG' && value) sub.lon = parseCoord(value);
     }

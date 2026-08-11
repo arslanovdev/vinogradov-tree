@@ -197,6 +197,73 @@ describe('person details', () => {
     expect(detail?.sources[0].detail).toBe('; второй фрагмент; третий фрагмент');
   });
 
+  it('opens a bundled PDF from a local source citation', () => {
+    const parsed = parseGedcom([
+      '0 @S1@ SOUR',
+      '1 TITL «Они вернулись с Победой», т. 11',
+      '0 @I1@ INDI',
+      '1 NAME Белов Егор Назарович',
+      '1 SOUR @S1@',
+      '2 PAGE с. 513; /sources/oni-vernulis-s-pobedoy-t11.pdf#page=513',
+    ].join('\n'));
+
+    const detail = buildDetail(parsed, '@I1@', buildLayout(parsed));
+
+    expect(detail?.sources[0].url).toBe('/sources/oni-vernulis-s-pobedoy-t11.pdf#page=513');
+    expect(detail?.sources[0].detail).toContain('с. 513');
+    expect(detail?.sources[0].detail).not.toContain('/sources/');
+  });
+
+  it('uses the canonical SOUR title instead of renaming the source after its citation', () => {
+    const parsed = parseGedcom([
+      '0 @S1@ SOUR',
+      '1 TITL «Подвиг народа» — электронный банк наградных документов (podvignaroda.ru)',
+      '0 @I1@ INDI',
+      '1 NAME Камышлов Николай Романович',
+      '1 SOUR @S1@',
+      '2 PAGE запись о награждении 36095128; наградной лист к приказу №13/н; https://podvignaroda.ru/?#id=36095128',
+    ].join('\n'));
+
+    const detail = buildDetail(parsed, '@I1@', buildLayout(parsed));
+
+    expect(detail?.sources[0]).toMatchObject({
+      title: '«Подвиг народа»',
+      description: 'электронный банк наградных документов (podvignaroda.ru)',
+      citations: ['запись о награждении 36095128; наградной лист к приказу №13/н;'],
+      repository: 'Память народа / ЦАМО',
+      url: 'https://podvignaroda.ru/?#id=36095128',
+    });
+  });
+
+  it('merges repeated citations to the same document without inventing event labels', () => {
+    const parsed = parseGedcom([
+      '0 @S1@ SOUR',
+      '1 TITL «Они вернулись с Победой. Списки военнослужащих, вернувшихся живыми с ВОВ 1941–1945 гг.», т. 11 (Уфа: Китап, 2004)',
+      '0 @I1@ INDI',
+      '1 NAME Белов Николай Егорович',
+      '1 BIRT',
+      '2 SOUR @S1@',
+      '3 PAGE с. 513: «БЕЛОВ Николай Егорович, 1925 г. р.»; /sources/oni-vernulis-s-pobedoy-t11.pdf#page=513',
+      '1 EVEN',
+      '2 TYPE Уволен из Красной армии',
+      '2 SOUR @S1@',
+      '3 PAGE с. 513: рядовой, уволен в 1944 г.; /sources/oni-vernulis-s-pobedoy-t11.pdf#page=513',
+    ].join('\n'));
+
+    const detail = buildDetail(parsed, '@I1@', buildLayout(parsed));
+
+    expect(detail?.sources).toHaveLength(1);
+    expect(detail?.sources[0]).toMatchObject({
+      title: 'Книга «Они вернулись с Победой»',
+      citations: [
+        'с. 513: «БЕЛОВ Николай Егорович, 1925 г. р.»;',
+        'с. 513: рядовой, уволен в 1944 г.;',
+      ],
+      url: '/sources/oni-vernulis-s-pobedoy-t11.pdf#page=513',
+    });
+    expect(detail?.sources[0].citations.join(' ')).not.toMatch(/рождение|демобилизация/i);
+  });
+
   it('resolves SOUR XREF records with TITL and PAGE under the record and under BIRT', () => {
     const parsed = parseGedcom([
       '0 @S1@ SOUR',
