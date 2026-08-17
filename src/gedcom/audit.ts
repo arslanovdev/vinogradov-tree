@@ -100,13 +100,13 @@ export function auditGedcom(text: string, options: GedcomAuditOptions = {}): Ged
     const xref = match[2] ?? null;
     const tag = match[3];
     const value = match[4] ?? '';
-    const previous = nodes.at(-1);
+    const previous = nodes[nodes.length - 1];
     if (previous && level > previous.level + 1) {
       report('error', 'LEVEL_JUMP', line, `Переход уровня ${previous.level} → ${level}.`);
     }
 
-    while (stack.length && stack.at(-1)!.level >= level) stack.pop();
-    const parent = stack.at(-1) ?? null;
+    while (stack.length && stack[stack.length - 1].level >= level) stack.pop();
+    const parent = stack[stack.length - 1] ?? null;
     const node = {
       line,
       level,
