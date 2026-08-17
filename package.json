@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "validate:gedcom": "vite-node scripts/validate-gedcom.ts"
+    "validate:gedcom": "vite-node scripts/validate-gedcom.ts",
+    "normalize:gedcom": "vite-node scripts/normalize-gedcom.ts"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.3",

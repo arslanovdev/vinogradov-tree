@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, relative, sep } from 'node:path';
 import { auditGedcom } from '../src/gedcom/audit';
+import { parseGedcom } from '../src/gedcom/parse';
 
 const publicDir = fileURLToPath(new URL('../public', import.meta.url));
 const familyGedcom = readFileSync(join(publicDir, 'fedorovka_family.ged'), 'utf8');
@@ -136,5 +137,20 @@ describe('GEDCOM audit', () => {
     ]);
 
     expect(result.issues.filter((issue) => blockingCodes.has(issue.code))).toEqual([]);
+  });
+
+  it('uses structured sources and confidence grades throughout the real tree', () => {
+    const result = auditGedcom(familyGedcom);
+    const policyCodes = new Set(['LITERAL_SOURCE', 'MISSING_CONF', 'INVALID_CONF']);
+
+    expect(result.issues.filter((issue) => policyCodes.has(issue.code))).toEqual([]);
+  });
+
+  it('places a documented birth in the event instead of leaving it only in NOTE', () => {
+    const tree = parseGedcom(familyGedcom);
+
+    expect(tree.indi['@I149@'].birt?.plac).toBe('с. Фёдоровка, Стерлитамакский у., Оренбургская губ., Российская империя');
+    expect(tree.indi['@I149@'].birt?.lat).toBeCloseTo(53.17991, 5);
+    expect(tree.indi['@I149@'].birt?.lon).toBeCloseTo(55.186229, 5);
   });
 });
