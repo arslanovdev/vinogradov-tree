@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { parseGedcom, validate } from '../src/gedcom/parse';
 import { buildLayout } from '../src/model/layout';
 import { relAnc, nameParts, confOf, linkifySource, fmtDate } from '../src/model/derive';
-import { filterMapPlaces, mapArrows, mapPlaces, placesMissingCoords } from '../src/model/places';
+import { filterMapPlaces, mapArrows, mapPlaces, placeIntro, placesMissingCoords } from '../src/model/places';
 import { buildDetail } from '../src/model/detail';
 
 const ged = readFileSync(fileURLToPath(new URL('../public/fedorovka_family.ged', import.meta.url)), 'utf-8');
@@ -134,6 +134,15 @@ describe('map coordinates', () => {
     const places = mapPlaces(tree);
     expect(places.length).toBeGreaterThan(3);
     expect(places.every((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon) && p.people.length > 0)).toBe(true);
+  });
+  it('describes the documented origins of Talachevo', () => {
+    const talachevo = mapPlaces(tree).find((place) => /Талач/i.test([place.name, ...place.fullNames].join(' ')));
+    expect(talachevo).toBeDefined();
+    expect(placeIntro(talachevo!)).toContain('Талас и Супай Мирясевы');
+    expect(placeIntro(talachevo!)).toContain('1669 году');
+    expect(placeIntro(talachevo!)).toContain('4 куницы и одному батману мёда');
+    expect(placeIntro(talachevo!)).toContain('61 башкира-вотчинника');
+    expect(placeIntro(talachevo!)).toContain('274 двора и 1491 жителя');
   });
   it('maps a located military event as a war place', () => {
     const parsed = parseGedcom([
